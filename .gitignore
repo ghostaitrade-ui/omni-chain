@@ -1,0 +1,23 @@
+# API keys — never commit these
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Knowledge base — personal data, don't share
+knowledge/
+
+# Logs
+logs/
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini

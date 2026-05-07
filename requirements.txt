@@ -1,0 +1,11 @@
+yfinance
+requests
+python-dotenv
+pytrends
+finnhub-python
+praw
+alpaca-trade-api
+chromadb
+sentence-transformers
+openai
+anthropic
