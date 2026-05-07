@@ -9,3 +9,6 @@ chromadb
 sentence-transformers
 openai
 anthropic
+gunicorn
+flask
+flask-cors
