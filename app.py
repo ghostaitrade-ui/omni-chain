@@ -63,8 +63,9 @@ def _build_report(ticker, company_name):
             key = futures[future]
             try:
                 results[key] = future.result()
-            except Exception as e:
-                results[key] = {"error": str(e)}
+            except BaseException as e:
+                # Catch SystemExit/SSL crashes from yfinance too
+                results[key] = {"error": type(e).__name__}
 
     report = {
         "ticker":    ticker,

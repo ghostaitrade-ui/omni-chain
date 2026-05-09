@@ -16,26 +16,9 @@ from pytrends.request import TrendReq
 
 load_dotenv()
 
-# ── Shared session with browser-like headers to avoid Yahoo rate limits ──────
-_session = requests.Session()
-_session.headers.update({
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-})
-
 def _yf_ticker(ticker):
-    """Return a yfinance Ticker using our shared session."""
-    t = yf.Ticker(ticker)
-    try:
-        t.session = _session
-    except Exception:
-        pass
-    return t
+    """Plain yfinance Ticker — no custom session (causes SSL crash on Py3.14)."""
+    return yf.Ticker(ticker)
 
 ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY")
 FINNHUB_KEY       = os.getenv("FINNHUB_KEY", "")
@@ -150,33 +133,34 @@ def get_price_data(ticker):
 
 
 def get_options_data(ticker):
-    """Options chain via yfinance with retry backoff."""
+    """Options chain via yfinance — single attempt, short timeout."""
     print(f"  [options] Fetching options data for {ticker}...")
-    for attempt in range(3):
-        try:
-            if attempt > 0:
-                time.sleep(5 * attempt)
-            t = _yf_ticker(ticker)
-            expirations = t.options
-            if not expirations:
-                return {"error": "No options data available"}
-            nearest = expirations[0]
-            chain = t.option_chain(nearest)
-            calls, puts = chain.calls, chain.puts
-            total_call_oi = calls["openInterest"].sum()
-            total_put_oi  = puts["openInterest"].sum()
-            return {
-                "nearest_expiry":        nearest,
-                "put_call_ratio":        round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else None,
-                "avg_call_iv_pct":       round(calls["impliedVolatility"].mean() * 100, 2),
-                "avg_put_iv_pct":        round(puts["impliedVolatility"].mean() * 100, 2),
-                "total_call_oi":         int(total_call_oi),
-                "total_put_oi":          int(total_put_oi),
-                "expirations_available": len(expirations),
-            }
-        except Exception as e:
-            last_err = str(e)
-    return {"error": f"Options unavailable after retries: {last_err}"}
+    try:
+        import signal as _signal
+
+        def _timeout_handler(signum, frame):
+            raise TimeoutError("yfinance options timeout")
+
+        t = _yf_ticker(ticker)
+        expirations = t.options
+        if not expirations:
+            return {"error": "No options data"}
+        nearest = expirations[0]
+        chain = t.option_chain(nearest)
+        calls, puts = chain.calls, chain.puts
+        total_call_oi = calls["openInterest"].sum()
+        total_put_oi  = puts["openInterest"].sum()
+        return {
+            "nearest_expiry":        nearest,
+            "put_call_ratio":        round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else None,
+            "avg_call_iv_pct":       round(calls["impliedVolatility"].mean() * 100, 2),
+            "avg_put_iv_pct":        round(puts["impliedVolatility"].mean() * 100, 2),
+            "total_call_oi":         int(total_call_oi),
+            "total_put_oi":          int(total_put_oi),
+            "expirations_available": len(expirations),
+        }
+    except BaseException as e:
+        return {"error": f"Options unavailable: {type(e).__name__}"}
 
 
 def get_news_sentiment(ticker):
@@ -347,11 +331,11 @@ def get_polygon_details(ticker):
 def get_google_trends(ticker, company_name=None):
     print(f"  [trends] Fetching Google Trends for {ticker}...")
     try:
-        pytrends = TrendReq(hl="en-US", tz=360)
-        kw = company_name if company_name else ticker
+        kw = ticker  # use ticker symbol — more reliable than company name
+        pytrends = TrendReq(hl="en-US", tz=360, timeout=(5, 10), retries=1, backoff_factor=0.5)
         pytrends.build_payload([kw], timeframe="today 12-m")
         data = pytrends.interest_over_time()
-        if data.empty:
+        if data.empty or kw not in data.columns:
             return {"error": "No trends data"}
         recent = int(data[kw].iloc[-1])
         avg    = int(data[kw].mean())
@@ -362,8 +346,8 @@ def get_google_trends(ticker, company_name=None):
             "trend_direction":     "Rising" if recent > avg else "Falling",
             "interest_vs_avg_pct": round((recent - avg) / avg * 100, 1) if avg > 0 else 0,
         }
-    except Exception as e:
-        return {"error": str(e)}
+    except BaseException as e:
+        return {"error": f"Trends unavailable: {type(e).__name__}"}
 
 
 def get_price_forecast(ticker):
