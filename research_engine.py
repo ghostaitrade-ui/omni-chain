@@ -6,6 +6,7 @@ SEC insider trades, StockTwits sentiment, and financial data.
 
 import os
 import json
+import time
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
@@ -13,6 +14,27 @@ from dotenv import load_dotenv
 from pytrends.request import TrendReq
 
 load_dotenv()
+
+# ── Shared session with browser-like headers to avoid Yahoo rate limits ──────
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+})
+
+def _yf_ticker(ticker):
+    """Return a yfinance Ticker using our shared session."""
+    t = yf.Ticker(ticker)
+    try:
+        t.session = _session
+    except Exception:
+        pass
+    return t
 
 ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY")
 FINNHUB_KEY       = os.getenv("FINNHUB_KEY", "")
@@ -24,7 +46,7 @@ POLYGON_KEY       = os.getenv("POLYGON_KEY", "")
 def get_price_data(ticker):
     print(f"  [price] Fetching price data for {ticker}...")
     try:
-        t = yf.Ticker(ticker)
+        t = _yf_ticker(ticker)
         hist = t.history(period="1y")
         info = t.info
         price_now = hist["Close"].iloc[-1]
@@ -55,7 +77,7 @@ def get_price_data(ticker):
 def get_options_data(ticker):
     print(f"  [options] Fetching options data for {ticker}...")
     try:
-        t = yf.Ticker(ticker)
+        t = _yf_ticker(ticker)
         expirations = t.options
         if not expirations:
             return {"error": "No options data available"}
@@ -107,7 +129,7 @@ def get_news_sentiment(ticker):
     # NewsAPI — broad keyword search across 70k sources
     if NEWSAPI_KEY:
         try:
-            t_info = yf.Ticker(ticker).info
+            t_info = _yf_ticker(ticker).info
             company = t_info.get("shortName", ticker)
             url = (f"https://newsapi.org/v2/everything"
                    f"?q={company}&language=en&sortBy=publishedAt"
@@ -291,7 +313,7 @@ def get_congressional_trades(ticker):
 def get_backtesting_summary(ticker):
     print(f"  [backtest] Running backtest for {ticker}...")
     try:
-        hist = yf.Ticker(ticker).history(period="3y")
+        hist = _yf_ticker(ticker).history(period="3y")
         if hist.empty or len(hist) < 252:
             return {"error": "Insufficient history"}
         closes = hist["Close"]
@@ -324,7 +346,7 @@ def generate_report(ticker):
     print(f"  Ticker: {ticker}  |  {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"{'='*60}\n")
 
-    company_name = yf.Ticker(ticker).info.get("longName", ticker)
+    company_name = _yf_ticker(ticker).info.get("longName", ticker)
 
     report = {
         "ticker":              ticker,

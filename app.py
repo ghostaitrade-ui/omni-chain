@@ -37,12 +37,12 @@ def research(ticker):
                 get_price_data, get_options_data, get_news_sentiment,
                 get_stocktwits_sentiment, get_insider_trades,
                 get_polygon_details, get_google_trends,
-                get_congressional_trades, get_backtesting_summary
+                get_congressional_trades, get_backtesting_summary,
+                _yf_ticker
             )
-            import yfinance as yf
             from datetime import datetime
 
-            company_name = yf.Ticker(ticker).info.get("longName", ticker)
+            company_name = _yf_ticker(ticker).info.get("longName", ticker)
             yield f"data: {json.dumps({'status': 'running', 'message': f'Fetching price data...'})}\n\n"
             price_data = get_price_data(ticker)
 
@@ -106,19 +106,24 @@ def dashboard(watchlist):
     from research_engine import (
         get_price_data, get_options_data, get_news_sentiment,
         get_stocktwits_sentiment, get_insider_trades, get_polygon_details,
-        get_google_trends, get_congressional_trades, get_backtesting_summary
+        get_google_trends, get_congressional_trades, get_backtesting_summary,
+        _yf_ticker
     )
-    import yfinance as yf
     from datetime import datetime
+    import time
 
     wl = WATCHLISTS.get(watchlist)
     if not wl:
         return jsonify({"error": f"Unknown watchlist: {watchlist}"}), 400
 
     results = []
-    for ticker in wl["tickers"]:
+    for i, ticker in enumerate(wl["tickers"]):
+        # Stagger requests — Yahoo Finance rate-limits burst traffic hard
+        if i > 0:
+            time.sleep(3)
         try:
-            company_name = yf.Ticker(ticker).info.get("longName", ticker)
+            company_name = _yf_ticker(ticker).info.get("longName", ticker)
+            time.sleep(1)  # brief pause between yf calls for same ticker
             report = {
                 "ticker": ticker, "company": company_name,
                 "generated": datetime.now().isoformat(),
@@ -133,7 +138,7 @@ def dashboard(watchlist):
                 "backtest": get_backtesting_summary(ticker),
             }
             score, reasons = score_ticker(report)
-            pd = report["price_data"]
+            pd_data = report["price_data"]
             ns = report["news_sentiment"]
             bt = report["backtest"]
             od = report["options_data"]
@@ -141,16 +146,16 @@ def dashboard(watchlist):
                 "ticker": ticker, "company": company_name,
                 "score": score, "reasons": reasons,
                 "note": wl["notes"].get(ticker, ""),
-                "price": pd.get("current_price"),
-                "change_1m": pd.get("change_1m_pct"),
-                "change_1y": pd.get("change_1y_pct"),
+                "price": pd_data.get("current_price"),
+                "change_1m": pd_data.get("change_1m_pct"),
+                "change_1y": pd_data.get("change_1y_pct"),
                 "sentiment": ns.get("sentiment_label"),
                 "sentiment_score": ns.get("avg_sentiment_score"),
                 "put_call": od.get("put_call_ratio"),
                 "buy_hold_3y": bt.get("buy_hold_return_pct"),
                 "max_drawdown": bt.get("max_drawdown_pct"),
                 "volatility": bt.get("annualized_volatility_pct"),
-                "short_float": pd.get("short_float"),
+                "short_float": pd_data.get("short_float"),
                 "headlines": ns.get("headlines", [])[:3],
             })
         except Exception as e:
