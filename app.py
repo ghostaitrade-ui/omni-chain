@@ -5,7 +5,9 @@ Flask server that serves the research engine via a web interface.
 
 import os
 import json
+import time
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -15,8 +17,60 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Cache recent reports in memory
+# ── In-memory cache: {ticker: {"ts": timestamp, "report": {...}}} ─────────────
 report_cache = {}
+CACHE_TTL = 1800  # 30 minutes
+
+def _cached(ticker):
+    """Return cached report if fresh, else None."""
+    entry = report_cache.get(ticker)
+    if entry and (time.time() - entry["ts"]) < CACHE_TTL:
+        return entry["report"]
+    return None
+
+def _cache_set(ticker, report):
+    report_cache[ticker] = {"ts": time.time(), "report": report}
+
+def _build_report(ticker, company_name):
+    """Fetch all data sources in parallel and return assembled report."""
+    from research_engine import (
+        get_price_data, get_options_data, get_news_sentiment,
+        get_stocktwits_sentiment, get_insider_trades,
+        get_polygon_details, get_google_trends,
+        get_congressional_trades, get_backtesting_summary,
+    )
+    from datetime import datetime
+
+    tasks = {
+        "price_data":          lambda: get_price_data(ticker),
+        "options_data":        lambda: get_options_data(ticker),
+        "news_sentiment":      lambda: get_news_sentiment(ticker),
+        "social_sentiment":    lambda: get_stocktwits_sentiment(ticker),
+        "insider_trades":      lambda: get_insider_trades(ticker),
+        "polygon_details":     lambda: get_polygon_details(ticker),
+        "google_trends":       lambda: get_google_trends(ticker, company_name),
+        "congressional_trades":lambda: get_congressional_trades(ticker),
+        "backtest":            lambda: get_backtesting_summary(ticker),
+    }
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=9) as pool:
+        futures = {pool.submit(fn): key for key, fn in tasks.items()}
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                results[key] = future.result()
+            except Exception as e:
+                results[key] = {"error": str(e)}
+
+    report = {
+        "ticker":    ticker,
+        "company":   company_name,
+        "generated": datetime.now().isoformat(),
+        **results,
+    }
+    _cache_set(ticker, report)
+    return report
 
 
 @app.route("/")
@@ -31,65 +85,27 @@ def research(ticker):
         return jsonify({"error": "Invalid ticker"}), 400
 
     def generate():
-        yield f"data: {json.dumps({'status': 'running', 'message': f'Starting research on {ticker}...'})}\n\n"
+        # Serve from cache instantly if available
+        cached = _cached(ticker)
+        if cached:
+            yield f"data: {json.dumps({'status': 'running', 'message': 'Loading from cache...'})}\n\n"
+            yield f"data: {json.dumps({'status': 'complete', 'report': cached})}\n\n"
+            return
+
+        yield f"data: {json.dumps({'status': 'running', 'message': f'Starting research on {ticker}... (fetching all sources in parallel)'})}\n\n"
         try:
-            from research_engine import (
-                get_price_data, get_options_data, get_news_sentiment,
-                get_stocktwits_sentiment, get_insider_trades,
-                get_polygon_details, get_google_trends,
-                get_congressional_trades, get_backtesting_summary,
-                _polygon_get
-            )
-            from datetime import datetime
+            from research_engine import _polygon_get
 
             try:
                 ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
                 company_name = ref.get("results", {}).get("name", ticker)
             except Exception:
                 company_name = ticker
-            yield f"data: {json.dumps({'status': 'running', 'message': f'Fetching price data...'})}\n\n"
-            price_data = get_price_data(ticker)
 
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Fetching options flow...'})}\n\n"
-            options_data = get_options_data(ticker)
+            yield f"data: {json.dumps({'status': 'running', 'message': f'Pulling data from 9 sources simultaneously...'})}\n\n"
 
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Fetching news & sentiment...'})}\n\n"
-            news_sentiment = get_news_sentiment(ticker)
+            report = _build_report(ticker, company_name)
 
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Fetching social sentiment...'})}\n\n"
-            social_sentiment = get_stocktwits_sentiment(ticker)
-
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Fetching insider trades...'})}\n\n"
-            insider_trades = get_insider_trades(ticker)
-
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Fetching company details...'})}\n\n"
-            polygon_details = get_polygon_details(ticker)
-
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Fetching Google Trends...'})}\n\n"
-            google_trends = get_google_trends(ticker, company_name)
-
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Checking congressional trades...'})}\n\n"
-            congressional_trades = get_congressional_trades(ticker)
-
-            yield f"data: {json.dumps({'status': 'running', 'message': 'Running backtest...'})}\n\n"
-            backtest = get_backtesting_summary(ticker)
-
-            report = {
-                "ticker": ticker,
-                "company": company_name,
-                "generated": datetime.now().isoformat(),
-                "price_data": price_data,
-                "options_data": options_data,
-                "news_sentiment": news_sentiment,
-                "social_sentiment": social_sentiment,
-                "insider_trades": insider_trades,
-                "polygon_details": polygon_details,
-                "google_trends": google_trends,
-                "congressional_trades": congressional_trades,
-                "backtest": backtest,
-            }
-
-            report_cache[ticker] = report
             os.makedirs("knowledge", exist_ok=True)
             from datetime import datetime
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -107,47 +123,35 @@ def research(ticker):
 @app.route("/api/dashboard/<watchlist>")
 def dashboard(watchlist):
     from sector_dashboard import WATCHLISTS, score_ticker
-    from research_engine import (
-        get_price_data, get_options_data, get_news_sentiment,
-        get_stocktwits_sentiment, get_insider_trades, get_polygon_details,
-        get_google_trends, get_congressional_trades, get_backtesting_summary,
-        _polygon_get
-    )
+    from research_engine import _polygon_get
     from datetime import datetime
-    import time
 
     wl = WATCHLISTS.get(watchlist)
     if not wl:
         return jsonify({"error": f"Unknown watchlist: {watchlist}"}), 400
 
-    results = []
-    for i, ticker in enumerate(wl["tickers"]):
+    def fetch_ticker(ticker):
+        """Fetch one ticker (cached or live) and return scored result."""
         try:
-            try:
-                ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
-                company_name = ref.get("results", {}).get("name", ticker)
-            except Exception:
-                company_name = ticker
-            report = {
-                "ticker": ticker, "company": company_name,
-                "generated": datetime.now().isoformat(),
-                "price_data": get_price_data(ticker),
-                "options_data": get_options_data(ticker),
-                "news_sentiment": get_news_sentiment(ticker),
-                "social_sentiment": get_stocktwits_sentiment(ticker),
-                "insider_trades": get_insider_trades(ticker),
-                "polygon_details": get_polygon_details(ticker),
-                "google_trends": get_google_trends(ticker, company_name),
-                "congressional_trades": get_congressional_trades(ticker),
-                "backtest": get_backtesting_summary(ticker),
-            }
+            cached = _cached(ticker)
+            if cached:
+                report = cached
+                company_name = report.get("company", ticker)
+            else:
+                try:
+                    ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
+                    company_name = ref.get("results", {}).get("name", ticker)
+                except Exception:
+                    company_name = ticker
+                report = _build_report(ticker, company_name)
+
             score, reasons = score_ticker(report)
-            pd_data = report["price_data"]
-            ns = report["news_sentiment"]
-            bt = report["backtest"]
-            od = report["options_data"]
-            results.append({
-                "ticker": ticker, "company": company_name,
+            pd_data = report.get("price_data", {})
+            ns      = report.get("news_sentiment", {})
+            bt      = report.get("backtest", {})
+            od      = report.get("options_data", {})
+            return {
+                "ticker": ticker, "company": report.get("company", ticker),
                 "score": score, "reasons": reasons,
                 "note": wl["notes"].get(ticker, ""),
                 "price": pd_data.get("current_price"),
@@ -161,9 +165,16 @@ def dashboard(watchlist):
                 "volatility": bt.get("annualized_volatility_pct"),
                 "short_float": pd_data.get("short_float"),
                 "headlines": ns.get("headlines", [])[:3],
-            })
+            }
         except Exception as e:
-            results.append({"ticker": ticker, "error": str(e), "score": 0})
+            return {"ticker": ticker, "error": str(e), "score": 0}
+
+    # Run all tickers in parallel
+    results = []
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {pool.submit(fetch_ticker, t): t for t in wl["tickers"]}
+        for future in as_completed(futures):
+            results.append(future.result())
 
     results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return jsonify({"watchlist": watchlist, "name": wl["name"], "results": results})
