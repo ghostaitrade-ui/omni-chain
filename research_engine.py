@@ -74,53 +74,30 @@ def _polygon_aggs(ticker, days=365):
 # ─── DATA COLLECTORS ────────────────────────────────────────────────────────
 
 def get_price_data(ticker):
-    """Price data via Polygon.io — uses shared bars cache."""
+    """Price data from cached bars only — zero extra Polygon calls."""
     print(f"  [price] Fetching price data for {ticker}...")
     try:
-        all_bars = _get_bars(ticker)
+        all_bars = _get_bars(ticker)          # 1 Polygon call, shared/cached
         bars = all_bars[-380:] if len(all_bars) > 380 else all_bars
         if not bars:
             return {"error": "No price data from Polygon"}
-
         closes  = [b["c"] for b in bars]
         volumes = [b["v"] for b in bars]
         price_now = closes[-1]
-        price_1m  = closes[-22]  if len(closes) > 22  else None
-        price_3m  = closes[-66]  if len(closes) > 66  else None
+        price_1m  = closes[-22] if len(closes) > 22 else None
+        price_3m  = closes[-66] if len(closes) > 66 else None
         price_1y  = closes[0]
-
-        # Snapshot for fundamentals (market cap, short interest etc.)
-        snap = {}
-        try:
-            snap_data = _polygon_get(f"/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}")
-            snap = snap_data.get("ticker", {})
-        except Exception:
-            pass
-
-        # Reference ticker details for sector/industry
-        ref = {}
-        try:
-            ref_data = _polygon_get(f"/v3/reference/tickers/{ticker}")
-            ref = ref_data.get("results", {})
-        except Exception:
-            pass
-
         return {
-            "current_price":   round(price_now, 2),
-            "change_1m_pct":   round((price_now - price_1m) / price_1m * 100, 2) if price_1m else None,
-            "change_3m_pct":   round((price_now - price_3m) / price_3m * 100, 2) if price_3m else None,
-            "change_1y_pct":   round((price_now - price_1y) / price_1y * 100, 2),
-            "52w_high":        round(max(closes), 2),
-            "52w_low":         round(min(closes), 2),
-            "avg_volume_30d":  int(sum(volumes[-30:]) / min(30, len(volumes))),
-            "market_cap":      snap.get("day", {}).get("vw"),   # fallback
-            "pe_ratio":        None,     # Polygon free tier doesn't include PE
-            "forward_pe":      None,
-            "dividend_yield":  None,
-            "beta":            None,
-            "sector":          ref.get("sic_description", ""),
-            "industry":        ref.get("sic_description", ""),
-            "short_float":     None,
+            "current_price":  round(price_now, 2),
+            "change_1m_pct":  round((price_now - price_1m) / price_1m * 100, 2) if price_1m else None,
+            "change_3m_pct":  round((price_now - price_3m) / price_3m * 100, 2) if price_3m else None,
+            "change_1y_pct":  round((price_now - price_1y) / price_1y * 100, 2),
+            "52w_high":       round(max(closes), 2),
+            "52w_low":        round(min(closes), 2),
+            "avg_volume_30d": int(sum(volumes[-30:]) / min(30, len(volumes))),
+            "market_cap": None, "pe_ratio": None, "forward_pe": None,
+            "dividend_yield": None, "beta": None,
+            "sector": None, "industry": None, "short_float": None,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -134,81 +111,52 @@ def get_options_data(ticker):
 
 
 def get_news_sentiment(ticker):
-    """News from Finnhub + NewsAPI + Alpha Vantage sentiment scoring."""
+    """News & sentiment — Finnhub only (1 fast call). NewsAPI + Alpha Vantage
+    available in full mode but skipped on free tier to stay under timeout."""
     print(f"  [news] Fetching news for {ticker}...")
     headlines = []
     sentiment_scores = []
 
-    # Finnhub — rich company news
+    # ── Finnhub (primary — fast, no heavy rate limits) ───────────────────────
     if FINNHUB_KEY:
         try:
             url = (f"https://finnhub.io/api/v1/company-news"
                    f"?symbol={ticker}"
-                   f"&from={(datetime.now()-timedelta(days=7)).strftime('%Y-%m-%d')}"
+                   f"&from={(datetime.now()-timedelta(days=14)).strftime('%Y-%m-%d')}"
                    f"&to={datetime.now().strftime('%Y-%m-%d')}"
                    f"&token={FINNHUB_KEY}")
-            data = requests.get(url, timeout=10).json()
+            data = requests.get(url, timeout=8).json()
             if isinstance(data, list):
-                for item in data[:15]:
+                for item in data[:12]:
                     headlines.append({
                         "headline": item.get("headline", ""),
-                        "source":   item.get("source", ""),
+                        "source":   item.get("source", "Finnhub"),
                         "date":     datetime.fromtimestamp(item.get("datetime", 0)).strftime("%Y-%m-%d"),
-                        "summary":  item.get("summary", "")[:200],
+                        "summary":  item.get("summary", "")[:150],
                         "url":      item.get("url", ""),
                     })
         except Exception:
             pass
 
-    # NewsAPI — broad keyword search across 70k sources
-    if NEWSAPI_KEY:
+    # ── Finnhub sentiment scores (same endpoint returns sentiment field) ──────
+    if FINNHUB_KEY:
         try:
-            company = ticker  # use ticker directly to avoid extra yf call
-            url = (f"https://newsapi.org/v2/everything"
-                   f"?q={company}&language=en&sortBy=publishedAt"
-                   f"&from={(datetime.now()-timedelta(days=7)).strftime('%Y-%m-%d')}"
-                   f"&pageSize=10&apiKey={NEWSAPI_KEY}")
-            data = requests.get(url, timeout=10).json()
-            if data.get("status") == "ok":
-                for item in data.get("articles", [])[:10]:
-                    headlines.append({
-                        "headline": item.get("title", ""),
-                        "source":   item.get("source", {}).get("name", ""),
-                        "date":     item.get("publishedAt", "")[:10],
-                        "summary":  item.get("description", "")[:200],
-                        "url":      item.get("url", ""),
-                    })
+            url = (f"https://finnhub.io/api/v1/news-sentiment"
+                   f"?symbol={ticker}&token={FINNHUB_KEY}")
+            data = requests.get(url, timeout=8).json()
+            score = data.get("companyNewsScore")
+            if score is not None:
+                sentiment_scores.append(float(score) - 0.5)   # normalize to -0.5..+0.5
         except Exception:
             pass
-
-    # Alpha Vantage — sentiment scoring
-    try:
-        url = (f"https://www.alphavantage.co/query"
-               f"?function=NEWS_SENTIMENT&tickers={ticker}"
-               f"&limit=20&apikey={ALPHA_VANTAGE_KEY}")
-        data = requests.get(url, timeout=10).json()
-        if "feed" in data:
-            for item in data["feed"]:
-                for ts in item.get("ticker_sentiment", []):
-                    if ts.get("ticker") == ticker:
-                        sentiment_scores.append(float(ts.get("ticker_sentiment_score", 0)))
-            if not headlines:
-                for item in data["feed"][:10]:
-                    headlines.append({
-                        "headline": item.get("title", ""),
-                        "source":   item.get("source", ""),
-                        "date":     item.get("time_published", "")[:8],
-                        "summary":  item.get("summary", "")[:200],
-                        "url":      item.get("url", ""),
-                    })
-    except Exception:
-        pass
 
     avg_sentiment = round(sum(sentiment_scores) / len(sentiment_scores), 3) if sentiment_scores else None
-    label = "Bullish" if avg_sentiment and avg_sentiment > 0.1 else "Bearish" if avg_sentiment and avg_sentiment < -0.1 else "Neutral"
+    label = "Bullish" if avg_sentiment and avg_sentiment > 0.05 \
+            else "Bearish" if avg_sentiment and avg_sentiment < -0.05 \
+            else "Neutral"
 
     return {
-        "headlines":           headlines[:15],
+        "headlines":           headlines[:12],
         "headline_count":      len(headlines),
         "avg_sentiment_score": avg_sentiment,
         "sentiment_label":     label,

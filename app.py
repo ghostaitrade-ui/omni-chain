@@ -45,6 +45,10 @@ def _build_report(ticker, company_name, status_cb=None):
         except Exception as e:
             return {"error": str(e)}
 
+    # Polygon call count per ticker: 1 (bars, shared by price+backtest+forecast)
+    # Finnhub calls: 4 (news, sentiment score, analyst target, analyst rec, insider)
+    # Other: 2 (StockTwits, QuiverQuant) — all fast, no rate limits
+    # Total: ~7 calls, ~15-20s per ticker
     report = {
         "ticker":              ticker,
         "company":             company_name,
@@ -57,9 +61,10 @@ def _build_report(ticker, company_name, status_cb=None):
         "social_sentiment":    step("Fetching social sentiment...",  lambda: get_stocktwits_sentiment(ticker)),
         "insider_trades":      step("Fetching insider trades...",    lambda: get_insider_trades(ticker)),
         "congressional_trades":step("Checking congress trades...",   lambda: get_congressional_trades(ticker)),
-        "polygon_details":     step("Fetching company details...",   lambda: get_polygon_details(ticker)),
-        "options_data":        step("Options flow...",               lambda: get_options_data(ticker)),
-        "google_trends":       step("Google Trends...",              lambda: get_google_trends(ticker, company_name)),
+        # polygon_details and google_trends skipped on free tier (extra Polygon call + pytrends OOM)
+        "polygon_details":     {"note": "Available on paid tier"},
+        "options_data":        {"note": "Available on paid tier"},
+        "google_trends":       {"note": "Available on paid tier"},
     }
     _cache_set(ticker, report)
     return report
