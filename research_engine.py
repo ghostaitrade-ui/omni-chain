@@ -9,16 +9,10 @@ import json
 import time
 import threading
 import requests
-import yfinance as yf
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from pytrends.request import TrendReq
 
 load_dotenv()
-
-def _yf_ticker(ticker):
-    """Plain yfinance Ticker — no custom session (causes SSL crash on Py3.14)."""
-    return yf.Ticker(ticker)
 
 ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY")
 FINNHUB_KEY       = os.getenv("FINNHUB_KEY", "")
@@ -133,34 +127,10 @@ def get_price_data(ticker):
 
 
 def get_options_data(ticker):
-    """Options chain via yfinance — single attempt, short timeout."""
-    print(f"  [options] Fetching options data for {ticker}...")
-    try:
-        import signal as _signal
-
-        def _timeout_handler(signum, frame):
-            raise TimeoutError("yfinance options timeout")
-
-        t = _yf_ticker(ticker)
-        expirations = t.options
-        if not expirations:
-            return {"error": "No options data"}
-        nearest = expirations[0]
-        chain = t.option_chain(nearest)
-        calls, puts = chain.calls, chain.puts
-        total_call_oi = calls["openInterest"].sum()
-        total_put_oi  = puts["openInterest"].sum()
-        return {
-            "nearest_expiry":        nearest,
-            "put_call_ratio":        round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else None,
-            "avg_call_iv_pct":       round(calls["impliedVolatility"].mean() * 100, 2),
-            "avg_put_iv_pct":        round(puts["impliedVolatility"].mean() * 100, 2),
-            "total_call_oi":         int(total_call_oi),
-            "total_put_oi":          int(total_put_oi),
-            "expirations_available": len(expirations),
-        }
-    except BaseException as e:
-        return {"error": f"Options unavailable: {type(e).__name__}"}
+    """Options flow — temporarily stubbed (yfinance removed to fix OOM on free tier).
+    Will be restored when upgraded to paid Render tier or Polygon options add-on."""
+    print(f"  [options] Options stubbed (memory constraint)")
+    return {"error": "Options data temporarily unavailable on free tier"}
 
 
 def get_news_sentiment(ticker):
@@ -329,25 +299,9 @@ def get_polygon_details(ticker):
 
 
 def get_google_trends(ticker, company_name=None):
-    print(f"  [trends] Fetching Google Trends for {ticker}...")
-    try:
-        kw = ticker  # use ticker symbol — more reliable than company name
-        pytrends = TrendReq(hl="en-US", tz=360, timeout=(5, 10), retries=1, backoff_factor=0.5)
-        pytrends.build_payload([kw], timeframe="today 12-m")
-        data = pytrends.interest_over_time()
-        if data.empty or kw not in data.columns:
-            return {"error": "No trends data"}
-        recent = int(data[kw].iloc[-1])
-        avg    = int(data[kw].mean())
-        return {
-            "current_interest":    recent,
-            "avg_12m_interest":    avg,
-            "peak_12m_interest":   int(data[kw].max()),
-            "trend_direction":     "Rising" if recent > avg else "Falling",
-            "interest_vs_avg_pct": round((recent - avg) / avg * 100, 1) if avg > 0 else 0,
-        }
-    except BaseException as e:
-        return {"error": f"Trends unavailable: {type(e).__name__}"}
+    """Google Trends — temporarily stubbed (pytrends/pandas removed to fix OOM)."""
+    print(f"  [trends] Trends stubbed (memory constraint)")
+    return {"error": "Google Trends temporarily unavailable on free tier"}
 
 
 def get_price_forecast(ticker):

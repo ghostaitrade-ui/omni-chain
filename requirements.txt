@@ -1,10 +1,6 @@
-yfinance
 requests
 python-dotenv
-pytrends
-finnhub-python
-praw
-alpaca-py
 gunicorn
 flask
 flask-cors
+finnhub-python
