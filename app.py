@@ -127,70 +127,74 @@ def research(ticker):
 def dashboard(watchlist):
     from sector_dashboard import WATCHLISTS, score_ticker
     from research_engine import _polygon_get
-    from datetime import datetime
 
     wl = WATCHLISTS.get(watchlist)
     if not wl:
         return jsonify({"error": f"Unknown watchlist: {watchlist}"}), 400
 
-    def fetch_ticker(ticker):
-        """Fetch one ticker (cached or live) and return scored result."""
-        try:
-            cached = _cached(ticker)
-            if cached:
-                report = cached
-                company_name = report.get("company", ticker)
-            else:
+    def _scored_row(ticker, report):
+        score, reasons = score_ticker(report)
+        pd_data = report.get("price_data", {})
+        ns      = report.get("news_sentiment", {})
+        bt      = report.get("backtest", {})
+        od      = report.get("options_data", {})
+        fc      = report.get("forecast", {})
+        an      = report.get("analyst", {})
+        return {
+            "ticker": ticker, "company": report.get("company", ticker),
+            "score": score, "reasons": reasons,
+            "note": wl["notes"].get(ticker, ""),
+            "price":        pd_data.get("current_price"),
+            "change_1m":    pd_data.get("change_1m_pct"),
+            "change_1y":    pd_data.get("change_1y_pct"),
+            "sentiment":    ns.get("sentiment_label"),
+            "put_call":     od.get("put_call_ratio"),
+            "buy_hold_3y":  bt.get("buy_hold_return_pct"),
+            "max_drawdown": bt.get("max_drawdown_pct"),
+            "volatility":   bt.get("annualized_volatility_pct"),
+            "short_float":  pd_data.get("short_float"),
+            "headlines":    ns.get("headlines", [])[:5],
+            "forecast":     fc,
+            "analyst":      an,
+            "insider_signal":  report.get("insider_trades", {}).get("insider_signal"),
+            "congress_signal": report.get("congressional_trades", {}).get("congressional_signal"),
+            "social_signal":   report.get("social_sentiment", {}).get("signal"),
+            "gt_direction":    report.get("google_trends", {}).get("trend_direction"),
+        }
+
+    def generate():
+        yield f"data: {json.dumps({'status':'start','name':wl['name'],'total':len(wl['tickers'])})}\n\n"
+
+        collected = []
+
+        def fetch_one(ticker):
+            try:
+                cached = _cached(ticker)
+                if cached:
+                    return _scored_row(ticker, cached)
                 try:
                     ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
                     company_name = ref.get("results", {}).get("name", ticker)
                 except Exception:
                     company_name = ticker
                 report = _build_report(ticker, company_name)
+                return _scored_row(ticker, report)
+            except Exception as e:
+                return {"ticker": ticker, "error": str(e), "score": 0}
 
-            score, reasons = score_ticker(report)
-            pd_data = report.get("price_data", {})
-            ns      = report.get("news_sentiment", {})
-            bt      = report.get("backtest", {})
-            od      = report.get("options_data", {})
-            fc      = report.get("forecast", {})
-            an      = report.get("analyst", {})
-            return {
-                "ticker": ticker, "company": report.get("company", ticker),
-                "score": score, "reasons": reasons,
-                "note": wl["notes"].get(ticker, ""),
-                "price": pd_data.get("current_price"),
-                "change_1m": pd_data.get("change_1m_pct"),
-                "change_1y": pd_data.get("change_1y_pct"),
-                "sentiment": ns.get("sentiment_label"),
-                "sentiment_score": ns.get("avg_sentiment_score"),
-                "put_call": od.get("put_call_ratio"),
-                "buy_hold_3y": bt.get("buy_hold_return_pct"),
-                "max_drawdown": bt.get("max_drawdown_pct"),
-                "volatility": bt.get("annualized_volatility_pct"),
-                "short_float": pd_data.get("short_float"),
-                "headlines": ns.get("headlines", [])[:5],
-                "forecast": fc,
-                "analyst": an,
-                "insider_signal": report.get("insider_trades", {}).get("insider_signal"),
-                "congress_signal": report.get("congressional_trades", {}).get("congressional_signal"),
-                "social_signal": report.get("social_sentiment", {}).get("signal"),
-                "call_iv": od.get("avg_call_iv_pct"),
-                "gt_direction": report.get("google_trends", {}).get("trend_direction"),
-                "full_report": report,
-            }
-        except Exception as e:
-            return {"ticker": ticker, "error": str(e), "score": 0}
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = {pool.submit(fetch_one, t): t for t in wl["tickers"]}
+            for fut in as_completed(futures):
+                row = fut.result()
+                collected.append(row)
+                yield f"data: {json.dumps({'status':'ticker','result':row,'done':len(collected),'total':len(wl['tickers'])})}\n\n"
 
-    # Run all tickers in parallel
-    results = []
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        futures = {pool.submit(fetch_ticker, t): t for t in wl["tickers"]}
-        for future in as_completed(futures):
-            results.append(future.result())
+        collected.sort(key=lambda x: x.get("score", 0), reverse=True)
+        for i, r in enumerate(collected):
+            r["rank"] = i + 1
+        yield f"data: {json.dumps({'status':'complete','results':collected})}\n\n"
 
-    results.sort(key=lambda x: x.get("score", 0), reverse=True)
-    return jsonify({"watchlist": watchlist, "name": wl["name"], "results": results})
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
 @app.route("/api/watchlists")

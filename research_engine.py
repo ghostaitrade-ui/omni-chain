@@ -44,34 +44,31 @@ POLYGON_KEY       = os.getenv("POLYGON_KEY", "")
 
 # ─── POLYGON HELPERS ─────────────────────────────────────────────────────────
 
-# Rate limiter: Polygon free tier = 5 calls/min → 1 call every 12s
-_poly_lock   = threading.Lock()
-_poly_last   = [0.0]
-_POLY_GAP    = 12.5   # seconds between calls
+# Semaphore: max 3 concurrent Polygon calls — avoids 429s without blocking forever
+_poly_sem = threading.Semaphore(3)
 
-def _polygon_get(path, params=None, _retries=3):
-    """Rate-limited Polygon.io API call with retry on 429."""
-    for attempt in range(_retries):
-        with _poly_lock:
-            gap = time.time() - _poly_last[0]
-            if gap < _POLY_GAP:
-                time.sleep(_POLY_GAP - gap)
-            _poly_last[0] = time.time()
-        try:
-            base = "https://api.polygon.io"
-            p = dict(params or {})
-            p["apiKey"] = POLYGON_KEY
-            r = requests.get(f"{base}{path}", params=p, timeout=20)
-            if r.status_code == 429:
-                time.sleep(30)
+def _polygon_get(path, params=None):
+    """Concurrent-limited Polygon.io API call with 429 retry."""
+    base = "https://api.polygon.io"
+    delays = [0, 15, 30, 60]
+    for attempt, delay in enumerate(delays):
+        if delay:
+            time.sleep(delay)
+        with _poly_sem:
+            try:
+                p = dict(params or {})
+                p["apiKey"] = POLYGON_KEY
+                r = requests.get(f"{base}{path}", params=p, timeout=25)
+                if r.status_code == 429:
+                    continue   # sleep next iteration
+                r.raise_for_status()
+                return r.json()
+            except requests.exceptions.Timeout:
                 continue
-            r.raise_for_status()
-            return r.json()
-        except Exception as e:
-            if attempt == _retries - 1:
-                raise
-            time.sleep(5)
-    raise RuntimeError(f"Polygon call failed after {_retries} retries")
+            except Exception:
+                if attempt == len(delays) - 1:
+                    raise
+    raise RuntimeError("Polygon: rate limit or timeout after retries")
 
 # ── Bars cache: fetch 3y once per ticker, reuse for price/backtest/forecast ──
 _bars_cache  = {}

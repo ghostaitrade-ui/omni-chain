@@ -26,13 +26,13 @@ header span { color: #8b949e; font-size: 0.85rem; }
 .spinner { width: 16px; height: 16px; border: 2px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .section { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
-.section h2 { font-size: 0.85rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; border-bottom: 1px solid #21262d; padding-bottom: 10px; }
+.section h2 { font-size: 0.82rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; border-bottom: 1px solid #21262d; padding-bottom: 10px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
 .stat { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 14px; }
-.stat label { font-size: 0.72rem; color: #8b949e; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-.stat value { font-size: 1.15rem; font-weight: 700; color: #e6edf3; }
+.stat label { font-size: 0.7rem; color: #8b949e; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.stat value { font-size: 1.1rem; font-weight: 700; color: #e6edf3; }
 .bull { color: #3fb950 !important; }
 .bear { color: #f85149 !important; }
 .neutral { color: #d29922 !important; }
@@ -43,53 +43,59 @@ header span { color: #8b949e; font-size: 0.85rem; }
 .headline a:hover { text-decoration: underline; }
 .score-badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-weight: 700; font-size: 0.82rem; }
 .score-high { background: #1a4a2a; color: #3fb950; }
-.score-mid { background: #2d2a1a; color: #d29922; }
-.score-low { background: #3a1a1a; color: #f85149; }
-
-/* Dashboard Table */
-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-th { text-align: left; color: #8b949e; font-weight: 600; padding: 10px 10px; border-bottom: 1px solid #30363d; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap; }
+.score-mid  { background: #2d2a1a; color: #d29922; }
+.score-low  { background: #3a1a1a; color: #f85149; }
+/* Dashboard */
+table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+th { text-align: left; color: #8b949e; font-weight: 600; padding: 10px 10px; border-bottom: 1px solid #30363d; font-size: 0.73rem; text-transform: uppercase; white-space: nowrap; }
 td { padding: 11px 10px; border-bottom: 1px solid #21262d; vertical-align: middle; }
 tr.data-row { cursor: pointer; transition: background 0.15s; }
 tr.data-row:hover td { background: #1c2128; }
 tr.top-pick td { background: #111d11; }
 tr.top-pick:hover td { background: #1a2a1a; }
+tr.loading-row td { color: #8b949e; font-style: italic; }
 .expand-row td { padding: 0; border-bottom: 1px solid #30363d; }
-.expand-inner { background: #0d1117; padding: 20px 16px; display: none; }
-.expand-inner.open { display: block; }
+.expand-inner { background: #0d1117; padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.2s; }
+.expand-inner.open { max-height: 600px; padding: 20px 16px; }
 .ticker-tag { font-weight: 700; color: #58a6ff; font-size: 1rem; }
-.expand-arrow { color: #8b949e; font-size: 0.75rem; transition: transform 0.2s; display: inline-block; }
+.expand-arrow { color: #8b949e; font-size: 0.7rem; transition: transform 0.2s; display: inline-block; margin-right: 4px; }
 .expand-arrow.open { transform: rotate(90deg); }
-
-/* Forecast Table */
-.forecast-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 4px; }
-.forecast-table th { font-size: 0.72rem; color: #8b949e; padding: 6px 10px; text-align: center; border-bottom: 1px solid #21262d; }
-.forecast-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #161b22; }
+/* Forecast table */
+.forecast-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.forecast-table th { font-size: 0.7rem; color: #8b949e; padding: 5px 8px; text-align: center; border-bottom: 1px solid #21262d; }
+.forecast-table td { padding: 7px 8px; text-align: center; border-bottom: 1px solid #161b22; }
 .forecast-table tr:last-child td { border-bottom: none; }
 .fc-label { text-align: left !important; font-weight: 600; }
 .fc-bear { color: #f85149; }
 .fc-base { color: #d29922; }
 .fc-bull { color: #3fb950; }
-
+/* Forecast range bar */
+.fc-bar-wrap { margin: 10px 0 4px; }
+.fc-bar { height: 20px; background: #21262d; border-radius: 10px; position: relative; overflow: visible; }
+.fc-bar-inner { height: 100%; border-radius: 10px; background: linear-gradient(90deg, #f85149 0%, #d29922 50%, #3fb950 100%); opacity: 0.35; }
+.fc-bar-dot { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 10px; height: 10px; border-radius: 50%; background: #58a6ff; border: 2px solid #0d1117; }
 /* Analyst bar */
 .analyst-bar { height: 8px; border-radius: 4px; background: #21262d; overflow: hidden; display: flex; margin: 6px 0; }
-.analyst-bar .buy-seg { background: #3fb950; }
+.analyst-bar .buy-seg  { background: #3fb950; }
 .analyst-bar .hold-seg { background: #d29922; }
 .analyst-bar .sell-seg { background: #f85149; }
-.rating-label { font-size: 0.75rem; color: #8b949e; display: flex; justify-content: space-between; }
-
+.rating-label { font-size: 0.72rem; color: #8b949e; display: flex; justify-content: space-between; }
+/* Quant chart */
+.quant-bar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 0.78rem; }
+.quant-bar-label { width: 180px; flex-shrink: 0; color: #8b949e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.72rem; }
+.quant-bar-track { flex: 1; background: #21262d; border-radius: 4px; height: 10px; overflow: hidden; }
+.quant-bar-fill  { height: 100%; border-radius: 4px; min-width: 4px; }
+.quant-bar-val   { width: 36px; text-align: right; flex-shrink: 0; font-weight: 600; font-size: 0.75rem; }
 /* Signal pills */
-.pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin: 2px; }
-.pill-bull { background: #1a4a2a; color: #3fb950; }
-.pill-bear { background: #3a1a1a; color: #f85149; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.73rem; font-weight: 600; margin: 2px; }
+.pill-bull    { background: #1a4a2a; color: #3fb950; }
+.pill-bear    { background: #3a1a1a; color: #f85149; }
 .pill-neutral { background: #2d2a1a; color: #d29922; }
-
 /* Single report */
 #report-container { display: none; }
 #dashboard-container { display: none; }
 .company-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
-.company-sub { color: #8b949e; font-size: 0.9rem; margin-bottom: 24px; }
-.reasons-list span { display: inline-block; background: #21262d; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 0.78rem; color: #8b949e; }
+.company-sub  { color: #8b949e; font-size: 0.9rem; margin-bottom: 24px; }
 </style>
 </head>
 <body>
@@ -100,17 +106,16 @@ tr.top-pick:hover td { background: #1a2a1a; }
 </header>
 
 <div class="container">
-
   <div class="search-box">
-    <input type="text" id="ticker-input" placeholder="Enter ticker symbol (e.g. AAPL, NVDA, LLY)" maxlength="5">
+    <input type="text" id="ticker-input" placeholder="Enter ticker (e.g. AAPL, NVDA, LLY)" maxlength="5">
     <button class="btn" id="search-btn" onclick="runResearch()">Analyze</button>
   </div>
 
-  <div style="margin-bottom: 8px; color: #8b949e; font-size: 0.85rem;">Sector Dashboards:</div>
+  <div style="margin-bottom:8px;color:#8b949e;font-size:0.85rem">Sector Dashboards:</div>
   <div class="watchlist-tabs">
-    <div class="tab" onclick="runDashboard('peptide', event)">Peptide / GLP-1</div>
-    <div class="tab" onclick="runDashboard('ai', event)">AI / Semiconductors</div>
-    <div class="tab" onclick="runDashboard('wheel', event)">Wheel Strategy</div>
+    <div class="tab" onclick="runDashboard('peptide',event)">Peptide / GLP-1</div>
+    <div class="tab" onclick="runDashboard('ai',event)">AI / Semiconductors</div>
+    <div class="tab" onclick="runDashboard('wheel',event)">Wheel Strategy</div>
   </div>
 
   <div class="status-bar" id="status-bar">
@@ -118,39 +123,31 @@ tr.top-pick:hover td { background: #1a2a1a; }
     <span id="status-msg">Analyzing...</span>
   </div>
 
-  <!-- Single Ticker Report -->
+  <!-- ── Single Ticker Report ─────────────────────────────────── -->
   <div id="report-container">
     <div class="company-name" id="r-company"></div>
-    <div class="company-sub" id="r-sub"></div>
+    <div class="company-sub"  id="r-sub"></div>
 
     <div class="section">
       <h2>Price & Fundamentals</h2>
       <div class="grid-4">
-        <div class="stat"><label>Current Price</label><value id="r-price">—</value></div>
-        <div class="stat"><label>1-Month Change</label><value id="r-1m">—</value></div>
-        <div class="stat"><label>3-Month Change</label><value id="r-3m">—</value></div>
-        <div class="stat"><label>1-Year Change</label><value id="r-1y">—</value></div>
-        <div class="stat"><label>52-Week Low</label><value id="r-low">—</value></div>
-        <div class="stat"><label>52-Week High</label><value id="r-high">—</value></div>
-        <div class="stat"><label>Annualized Vol</label><value id="r-vol">—</value></div>
+        <div class="stat"><label>Price</label><value id="r-price">—</value></div>
+        <div class="stat"><label>1-Month</label><value id="r-1m">—</value></div>
+        <div class="stat"><label>3-Month</label><value id="r-3m">—</value></div>
+        <div class="stat"><label>1-Year</label><value id="r-1y">—</value></div>
+        <div class="stat"><label>52W Low</label><value id="r-low">—</value></div>
+        <div class="stat"><label>52W High</label><value id="r-high">—</value></div>
+        <div class="stat"><label>Ann. Volatility</label><value id="r-vol">—</value></div>
         <div class="stat"><label>Daily Win Rate</label><value id="r-wr">—</value></div>
       </div>
     </div>
 
-    <!-- Forecast Section -->
     <div class="section">
       <h2>Price Probability Forecast</h2>
-      <div style="color:#8b949e; font-size:0.78rem; margin-bottom:12px;">Based on 90-day historical volatility + recent drift. Bull/Bear = ±2 standard deviations (95% confidence interval).</div>
+      <div style="color:#8b949e;font-size:0.75rem;margin-bottom:12px">Log-normal model · ±2σ confidence bands · based on 90-day realized volatility</div>
+      <div id="r-fc-bars" style="margin-bottom:16px"></div>
       <table class="forecast-table">
-        <thead>
-          <tr>
-            <th style="text-align:left">Scenario</th>
-            <th>1 Day</th>
-            <th>3 Days</th>
-            <th>1 Week</th>
-            <th>1 Month</th>
-          </tr>
-        </thead>
+        <thead><tr><th style="text-align:left">Scenario</th><th>1 Day</th><th>3 Days</th><th>1 Week</th><th>1 Month</th></tr></thead>
         <tbody id="r-forecast-body"></tbody>
       </table>
     </div>
@@ -159,6 +156,22 @@ tr.top-pick:hover td { background: #1a2a1a; }
       <div class="section">
         <h2>Analyst Consensus</h2>
         <div id="r-analyst"></div>
+      </div>
+      <div class="section">
+        <h2>Quant Score Breakdown</h2>
+        <div id="r-quant-chart"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="section">
+        <h2>Sentiment Signals</h2>
+        <div class="grid-2">
+          <div class="stat"><label>News</label><value id="r-news-signal">—</value></div>
+          <div class="stat"><label>Social (StockTwits)</label><value id="r-social-signal">—</value></div>
+          <div class="stat"><label>Insider Trades</label><value id="r-insider-signal">—</value></div>
+          <div class="stat"><label>Congressional</label><value id="r-congress-signal">—</value></div>
+        </div>
       </div>
       <div class="section">
         <h2>Options Flow</h2>
@@ -173,372 +186,397 @@ tr.top-pick:hover td { background: #1a2a1a; }
 
     <div class="grid-2">
       <div class="section">
-        <h2>Sentiment Signals</h2>
-        <div class="grid-2">
-          <div class="stat"><label>News Sentiment</label><value id="r-news-signal">—</value></div>
-          <div class="stat"><label>Social (StockTwits)</label><value id="r-social-signal">—</value></div>
-          <div class="stat"><label>Insider Trades</label><value id="r-insider-signal">—</value></div>
-          <div class="stat"><label>Congressional</label><value id="r-congress-signal">—</value></div>
-        </div>
-      </div>
-      <div class="section">
         <h2>Backtest (3 Years)</h2>
         <div class="grid-2">
-          <div class="stat"><label>Buy &amp; Hold Return</label><value id="r-bh">—</value></div>
-          <div class="stat"><label>MA Strategy Return</label><value id="r-ma">—</value></div>
+          <div class="stat"><label>Buy &amp; Hold</label><value id="r-bh">—</value></div>
+          <div class="stat"><label>MA Crossover</label><value id="r-ma">—</value></div>
           <div class="stat"><label>Max Drawdown</label><value id="r-dd">—</value></div>
           <div class="stat"><label>Google Trends</label><value id="r-gt-dir">—</value></div>
         </div>
       </div>
-    </div>
-
-    <div class="section">
-      <h2>Recent News Headlines</h2>
-      <div id="r-headlines"></div>
+      <div class="section">
+        <h2>Recent Headlines</h2>
+        <div id="r-headlines"></div>
+      </div>
     </div>
   </div>
 
-  <!-- Sector Dashboard -->
+  <!-- ── Sector Dashboard ────────────────────────────────────── -->
   <div id="dashboard-container">
-    <div class="section" style="padding:0; overflow:hidden;">
-      <div style="padding:18px 20px 12px; border-bottom:1px solid #30363d;">
-        <h2 id="dash-title" style="border:none; padding:0; margin:0; font-size:1rem; color:#e6edf3; text-transform:uppercase; letter-spacing:0.05em;"></h2>
-        <div style="color:#8b949e; font-size:0.78rem; margin-top:4px;">Click any row to expand full analysis &amp; forecast</div>
+    <div class="section" style="padding:0;overflow:hidden">
+      <div style="padding:18px 20px 12px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div id="dash-title" style="font-size:1rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em"></div>
+          <div style="color:#8b949e;font-size:0.75rem;margin-top:3px">Click any row to expand · Tickers load as data arrives</div>
+        </div>
+        <div id="dash-progress" style="color:#8b949e;font-size:0.82rem"></div>
       </div>
       <table>
         <thead>
           <tr>
-            <th>Rank</th>
-            <th>Ticker</th>
-            <th>Score</th>
-            <th>Price</th>
-            <th>1M %</th>
-            <th>1Y %</th>
-            <th>1W Forecast</th>
-            <th>Analyst Target</th>
-            <th>News</th>
-            <th>P/C</th>
-            <th>3Y Return</th>
+            <th>Rank</th><th>Ticker</th><th>Score</th><th>Price</th>
+            <th>1M %</th><th>1Y %</th><th>1W Forecast</th>
+            <th>Analyst</th><th>News</th><th>P/C</th><th>3Y Return</th>
           </tr>
         </thead>
         <tbody id="dash-table"></tbody>
       </table>
     </div>
   </div>
-
 </div>
 
 <script>
-const statusBar = document.getElementById('status-bar');
-const statusMsg = document.getElementById('status-msg');
+// ── Helpers ────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const setStatus = msg => { $('status-bar').className='status-bar show'; $('status-msg').textContent=msg; };
+const clearStatus = ()  => { $('status-bar').className='status-bar'; };
 
-function setStatus(msg) { statusBar.className = 'status-bar show'; statusMsg.textContent = msg; }
-function clearStatus() { statusBar.className = 'status-bar'; }
-
-function fmt(val, prefix='', suffix='', decimals=2) {
-  if (val === null || val === undefined) return 'N/A';
-  return prefix + parseFloat(val).toFixed(decimals) + suffix;
-}
 function colorPct(val) {
-  if (val === null || val === undefined) return 'N/A';
-  const n = parseFloat(val);
-  const cls = n > 0 ? 'bull' : n < 0 ? 'bear' : '';
-  return `<span class="${cls}">${n > 0 ? '+' : ''}${n.toFixed(2)}%</span>`;
+  if (val===null||val===undefined) return 'N/A';
+  const n=parseFloat(val), cls=n>0?'bull':n<0?'bear':'';
+  return `<span class="${cls}">${n>0?'+':''}${n.toFixed(2)}%</span>`;
 }
 function colorSignal(val) {
   if (!val) return 'N/A';
-  const cls = val === 'Bullish' || val === 'Rising' || val === 'Strong Buy' || val === 'Buy' ? 'bull'
-            : val === 'Bearish' || val === 'Falling' || val === 'Sell' || val === 'Strong Sell' ? 'bear'
-            : 'neutral';
+  const cls = /Bullish|Rising|Strong Buy|Buy/.test(val) ? 'bull'
+            : /Bearish|Falling|Sell/.test(val) ? 'bear' : 'neutral';
   return `<span class="${cls}">${val}</span>`;
 }
 function scoreBadge(score) {
-  const cls = score >= 65 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low';
+  const cls = score>=65?'score-high':score>=40?'score-mid':'score-low';
   return `<span class="score-badge ${cls}">${score}/100</span>`;
 }
 function pill(val) {
-  if (!val) return '';
-  const cls = val === 'Bullish' || val === 'Rising' ? 'pill-bull'
-            : val === 'Bearish' || val === 'Falling' ? 'pill-bear' : 'pill-neutral';
+  if (!val||val==='Neutral'||val==='Mixed') return `<span class="pill pill-neutral">${val||'—'}</span>`;
+  const cls = /Bullish|Rising/.test(val)?'pill-bull':/Bearish|Falling/.test(val)?'pill-bear':'pill-neutral';
   return `<span class="pill ${cls}">${val}</span>`;
 }
 
-function buildForecastTable(fc, currentPrice) {
-  if (!fc || fc.error) return '<div style="color:#8b949e;font-size:0.85rem">Forecast unavailable</div>';
-  const horizons = ['1d','3d','1w','1m'];
-  const labels   = ['1 Day','3 Days','1 Week','1 Month'];
-  const rows = ['bear','base','bull'];
-  const rowLabels = {bear:'Bear (−2σ)', base:'Base (Drift)', bull:'Bull (+2σ)'};
-  const rowCls    = {bear:'fc-bear', base:'fc-base', bull:'fc-bull'};
-
-  let html = '';
-  rows.forEach(row => {
-    html += `<tr><td class="fc-label ${rowCls[row]}">${rowLabels[row]}</td>`;
-    horizons.forEach(h => {
-      const d = fc[h];
-      if (!d) { html += '<td>N/A</td>'; return; }
-      const price = d[row];
-      const pct   = d[`${row}_pct`];
-      const sign  = pct > 0 ? '+' : '';
-      html += `<td class="${rowCls[row]}"><strong>$${price}</strong><br><small>${sign}${pct}%</small></td>`;
-    });
-    html += '</tr>';
-  });
-  return html;
+// ── Forecast table rows ────────────────────────────────────────
+function buildForecastRows(fc) {
+  if (!fc||fc.error) return '<tr><td colspan="5" style="color:#8b949e;font-size:0.82rem">Forecast unavailable</td></tr>';
+  const hs=['1d','3d','1w','1m'], scenarios=[
+    {k:'bear',label:'Bear (−2σ)',cls:'fc-bear'},
+    {k:'base',label:'Base',      cls:'fc-base'},
+    {k:'bull',label:'Bull (+2σ)',cls:'fc-bull'},
+  ];
+  return scenarios.map(s=>`
+    <tr><td class="fc-label ${s.cls}">${s.label}</td>${hs.map(h=>{
+      const d=fc[h]; if(!d) return '<td>—</td>';
+      const sign=d[s.k+'_pct']>0?'+':'';
+      return `<td class="${s.cls}"><strong>$${d[s.k]}</strong><br><small>${sign}${d[s.k+'_pct']}%</small></td>`;
+    }).join('')}</tr>`).join('');
 }
 
-function buildAnalystBlock(an) {
-  if (!an || an.error || !an.total_analysts) return '<div style="color:#8b949e;font-size:0.85rem">No analyst data</div>';
-  const total = an.total_analysts;
-  const buyW  = Math.round((an.strong_buy + an.buy) / total * 100);
-  const holdW = Math.round(an.hold / total * 100);
-  const sellW = 100 - buyW - holdW;
-  const upside = an.target_mean && an.target_mean > 0 ? ((an.target_mean / (an.target_mean - (an.target_mean - an.target_mean))) * 100).toFixed(1) : null;
+// ── Forecast range bars (visual) ───────────────────────────────
+function buildFcBars(fc, currentPrice) {
+  if (!fc||fc.error||!currentPrice) return '';
+  const horizons = [{key:'1w',label:'1 Week'},{key:'1m',label:'1 Month'}];
+  return horizons.map(({key,label})=>{
+    const d = fc[key]; if(!d) return '';
+    const bear=d.bear, bull=d.bull, base=d.base;
+    const range = bull - bear || 1;
+    const basePct = ((base-bear)/range*100).toFixed(1);
+    const nowPct  = ((currentPrice-bear)/range*100).toFixed(1);
+    return `<div style="margin-bottom:10px">
+      <div style="font-size:0.72rem;color:#8b949e;margin-bottom:4px">${label} range</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:0.75rem">
+        <span class="fc-bear">$${bear}</span>
+        <div style="flex:1;position:relative">
+          <div class="fc-bar"><div class="fc-bar-inner" style="width:100%"></div></div>
+          <div class="fc-bar-dot" style="left:${basePct}%;background:#d29922" title="Base $${base}"></div>
+          <div class="fc-bar-dot" style="left:${nowPct}%;background:#58a6ff" title="Now $${currentPrice}"></div>
+        </div>
+        <span class="fc-bull">$${bull}</span>
+      </div>
+      <div style="font-size:0.68rem;color:#8b949e;margin-top:3px">
+        <span style="color:#d29922">● Base $${base}</span> &nbsp;
+        <span style="color:#58a6ff">● Now $${currentPrice}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
 
+// ── Analyst block ──────────────────────────────────────────────
+function buildAnalystBlock(an) {
+  if (!an||an.error||!an.total_analysts) return '<div style="color:#8b949e;font-size:0.82rem">No analyst data</div>';
+  const t=an.total_analysts;
+  const bw=Math.round((an.strong_buy+an.buy)/t*100);
+  const hw=Math.round(an.hold/t*100);
+  const sw=100-bw-hw;
   return `
-    <div style="margin-bottom:12px">
-      <div style="font-size:1.4rem;font-weight:700;margin-bottom:2px">${colorSignal(an.consensus)}</div>
-      <div style="color:#8b949e;font-size:0.78rem">${total} analysts · ${an.period || ''}</div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:1.4rem;font-weight:700">${colorSignal(an.consensus)}</div>
+      <div style="color:#8b949e;font-size:0.75rem">${t} analysts · ${an.period||''}</div>
     </div>
     <div class="analyst-bar">
-      <div class="buy-seg" style="width:${buyW}%"></div>
-      <div class="hold-seg" style="width:${holdW}%"></div>
-      <div class="sell-seg" style="width:${sellW}%"></div>
+      <div class="buy-seg"  style="width:${bw}%"></div>
+      <div class="hold-seg" style="width:${hw}%"></div>
+      <div class="sell-seg" style="width:${sw}%"></div>
     </div>
     <div class="rating-label">
-      <span class="bull">${an.strong_buy + an.buy} Buy</span>
+      <span class="bull">${an.strong_buy+an.buy} Buy</span>
       <span class="neutral">${an.hold} Hold</span>
-      <span class="bear">${an.sell + an.strong_sell} Sell</span>
+      <span class="bear">${an.sell+an.strong_sell} Sell</span>
     </div>
-    ${an.target_mean ? `
+    ${an.target_mean?`
     <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div class="stat"><label>Price Target</label><value>$${an.target_mean}</value></div>
-      <div class="stat"><label>Target Range</label><value style="font-size:0.9rem">$${an.target_low || '?'} – $${an.target_high || '?'}</value></div>
-    </div>` : ''}`;
+      <div class="stat"><label>Mean Target</label><value>$${an.target_mean}</value></div>
+      <div class="stat"><label>Range</label><value style="font-size:0.85rem">$${an.target_low||'?'}–$${an.target_high||'?'}</value></div>
+    </div>`:''}`;
 }
 
-// ── Single ticker research ──────────────────────────────────────────────────
-function runResearch() {
-  const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
-  if (!ticker) return;
-  document.getElementById('report-container').style.display = 'none';
-  document.getElementById('dashboard-container').style.display = 'none';
-  document.getElementById('search-btn').disabled = true;
-  setStatus(`Analyzing ${ticker}...`);
-
-  const es = new EventSource(`/api/research/${ticker}`);
-  es.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-    if (data.status === 'running') {
-      setStatus(data.message);
-    } else if (data.status === 'complete') {
-      es.close(); clearStatus();
-      document.getElementById('search-btn').disabled = false;
-      renderReport(data.report);
-    } else if (data.status === 'error') {
-      es.close(); clearStatus();
-      document.getElementById('search-btn').disabled = false;
-      setStatus(`Error: ${data.message}`);
-    }
-  };
-  es.onerror = () => { es.close(); clearStatus(); document.getElementById('search-btn').disabled = false; };
-}
-
-function renderReport(r) {
-  const pd = r.price_data || {}, od = r.options_data || {};
-  const ns = r.news_sentiment || {}, ss = r.social_sentiment || {};
-  const it = r.insider_trades || {}, ct = r.congressional_trades || {};
-  const bt = r.backtest || {}, gt = r.google_trends || {};
-  const fc = r.forecast || {}, an = r.analyst || {};
-
-  document.getElementById('r-company').textContent = r.company || r.ticker;
-  document.getElementById('r-sub').textContent = `${r.ticker} · Generated ${new Date(r.generated).toLocaleString()}`;
-  document.getElementById('r-price').innerHTML = pd.current_price ? `$${pd.current_price}` : 'N/A';
-  document.getElementById('r-1m').innerHTML   = colorPct(pd.change_1m_pct);
-  document.getElementById('r-3m').innerHTML   = colorPct(pd.change_3m_pct);
-  document.getElementById('r-1y').innerHTML   = colorPct(pd.change_1y_pct);
-  document.getElementById('r-low').innerHTML  = `$${pd['52w_low'] || 'N/A'}`;
-  document.getElementById('r-high').innerHTML = `$${pd['52w_high'] || 'N/A'}`;
-  document.getElementById('r-vol').innerHTML  = fc.annual_vol_pct ? `${fc.annual_vol_pct}%` : (bt.annualized_volatility_pct ? `${bt.annualized_volatility_pct}%` : 'N/A');
-  document.getElementById('r-wr').innerHTML   = bt.daily_win_rate_pct ? `${bt.daily_win_rate_pct}%` : 'N/A';
-
-  // Forecast
-  document.getElementById('r-forecast-body').innerHTML = buildForecastTable(fc, pd.current_price);
-
-  // Analyst
-  document.getElementById('r-analyst').innerHTML = buildAnalystBlock(an);
-
-  // Options
-  const pc = od.put_call_ratio;
-  document.getElementById('r-pc').innerHTML = pc || 'N/A';
-  document.getElementById('r-pc-signal').innerHTML = colorSignal(pc ? (pc < 0.8 ? 'Bullish' : pc > 1.2 ? 'Bearish' : 'Neutral') : null);
-  document.getElementById('r-call-iv').innerHTML = od.avg_call_iv_pct ? `${od.avg_call_iv_pct}%` : 'N/A';
-  document.getElementById('r-put-iv').innerHTML  = od.avg_put_iv_pct  ? `${od.avg_put_iv_pct}%`  : 'N/A';
-
-  // Signals
-  document.getElementById('r-news-signal').innerHTML    = colorSignal(ns.sentiment_label);
-  document.getElementById('r-social-signal').innerHTML  = colorSignal(ss.signal);
-  document.getElementById('r-insider-signal').innerHTML = colorSignal(it.insider_signal);
-  document.getElementById('r-congress-signal').innerHTML= colorSignal(ct.congressional_signal);
-
-  // Backtest
-  document.getElementById('r-bh').innerHTML  = colorPct(bt.buy_hold_return_pct);
-  document.getElementById('r-ma').innerHTML  = colorPct(bt.ma_crossover_return_pct);
-  document.getElementById('r-dd').innerHTML  = `<span class="bear">${bt.max_drawdown_pct || 'N/A'}%</span>`;
-  document.getElementById('r-gt-dir').innerHTML = colorSignal(gt.trend_direction === 'Rising' ? 'Bullish' : gt.trend_direction === 'Falling' ? 'Bearish' : null);
-
-  // Headlines
-  const headlines = ns.headlines || [];
-  document.getElementById('r-headlines').innerHTML = headlines.length
-    ? headlines.slice(0, 8).map(h => `
-        <div class="headline">
-          <div class="date">${h.date || ''} · ${h.source || ''}</div>
-          <div>${h.url ? `<a href="${h.url}" target="_blank">${h.headline}</a>` : h.headline}</div>
-        </div>`).join('')
-    : '<div style="color:#8b949e">No headlines found</div>';
-
-  document.getElementById('report-container').style.display = 'block';
-  document.getElementById('dashboard-container').style.display = 'none';
-}
-
-// ── Dashboard ───────────────────────────────────────────────────────────────
-async function runDashboard(watchlist, event) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  if (event) event.target.classList.add('active');
-  document.getElementById('report-container').style.display = 'none';
-  document.getElementById('dashboard-container').style.display = 'none';
-  setStatus(`Loading ${watchlist} sector dashboard...`);
-
-  try {
-    const res  = await fetch(`/api/dashboard/${watchlist}`);
-    const data = await res.json();
-    clearStatus();
-    renderDashboard(data);
-  } catch(e) {
-    clearStatus(); setStatus(`Error: ${e.message}`);
-  }
-}
-
-function renderDashboard(data) {
-  document.getElementById('dash-title').textContent = data.name;
-  const tbody = document.getElementById('dash-table');
-  let html = '';
-
-  data.results.forEach((r, i) => {
-    const fc = r.forecast || {};
-    const an = r.analyst || {};
-    const w1 = fc['1w'];
-    const forecastCell = w1
-      ? `<span class="${w1.base_pct > 0 ? 'bull' : 'bear'}">${w1.base_pct > 0 ? '+' : ''}${w1.base_pct}%</span>
-         <small style="color:#8b949e;display:block">Bear ${w1.bear_pct}% / Bull +${w1.bull_pct}%</small>`
-      : 'N/A';
-
-    const targetCell = an.target_mean
-      ? `<span>$${an.target_mean}</span><small style="color:#8b949e;display:block">${colorSignal(an.consensus)}</small>`
-      : 'N/A';
-
-    html += `
-      <tr class="data-row ${i === 0 ? 'top-pick' : ''}" onclick="toggleExpand('exp-${i}', this)">
-        <td><span class="expand-arrow" id="arrow-${i}">&#9654;</span> ${i === 0 ? '★ ' : ''}${i+1}</td>
-        <td><span class="ticker-tag">${r.ticker}</span><br><small style="color:#8b949e">${(r.company||'').substring(0,22)}</small></td>
-        <td>${scoreBadge(r.score)}</td>
-        <td>${r.price ? '$'+r.price : 'N/A'}</td>
-        <td>${r.change_1m !== null && r.change_1m !== undefined ? colorPct(r.change_1m) : 'N/A'}</td>
-        <td>${r.change_1y !== null && r.change_1y !== undefined ? colorPct(r.change_1y) : 'N/A'}</td>
-        <td>${forecastCell}</td>
-        <td>${targetCell}</td>
-        <td>${colorSignal(r.sentiment)}</td>
-        <td>${r.put_call || 'N/A'}</td>
-        <td>${r.buy_hold_3y !== null && r.buy_hold_3y !== undefined ? colorPct(r.buy_hold_3y) : 'N/A'}</td>
-      </tr>
-      <tr class="expand-row">
-        <td colspan="11">
-          <div class="expand-inner" id="exp-${i}">
-            ${buildExpandCard(r, i)}
-          </div>
-        </td>
-      </tr>`;
+// ── Quant score bar chart ──────────────────────────────────────
+function buildQuantChart(score, reasons) {
+  const base = 50;
+  const delta = score - base;
+  const rows = (reasons||[]).map(r => {
+    // Parse score contribution from reason string (+ or -)
+    const isNeg = r.startsWith('Weak')||r.startsWith('Bearish')||r.startsWith('High historical')||r.startsWith('Social sentiment bearish')||r.startsWith('Congress selling')||r.startsWith('Insiders selling');
+    const pts = isNeg ? -5 : 5;
+    const color = isNeg ? '#f85149' : '#3fb950';
+    const pct = Math.abs(pts) / 20 * 100; // max bar = 20pts
+    return `<div class="quant-bar-row">
+      <div class="quant-bar-label" title="${r}">${r.substring(0,35)}</div>
+      <div class="quant-bar-track">
+        <div class="quant-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="quant-bar-val" style="color:${color}">${pts>0?'+':''}${pts}</div>
+    </div>`;
   });
-
-  tbody.innerHTML = html;
-  document.getElementById('dashboard-container').style.display = 'block';
-}
-
-function toggleExpand(id, row) {
-  const panel = document.getElementById(id);
-  const idx   = id.split('-')[1];
-  const arrow = document.getElementById('arrow-' + idx);
-  const isOpen = panel.classList.contains('open');
-  // close all others
-  document.querySelectorAll('.expand-inner').forEach(p => p.classList.remove('open'));
-  document.querySelectorAll('.expand-arrow').forEach(a => a.classList.remove('open'));
-  if (!isOpen) {
-    panel.classList.add('open');
-    arrow.classList.add('open');
-  }
-}
-
-function buildExpandCard(r, i) {
-  const fc = r.forecast || {};
-  const an = r.analyst  || {};
-  const headlines = (r.headlines || []).slice(0, 5);
-
+  const cls = score>=65?'bull':score>=40?'neutral':'bear';
   return `
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:4px 0 12px">
-
-    <!-- Forecast -->
-    <div>
-      <div style="font-size:0.72rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Price Forecast</div>
-      <table class="forecast-table" style="font-size:0.8rem">
-        <thead><tr>
-          <th style="text-align:left">Scenario</th><th>1D</th><th>3D</th><th>1W</th><th>1M</th>
-        </tr></thead>
-        <tbody>${buildForecastTable(fc)}</tbody>
-      </table>
-      ${fc.annual_vol_pct ? `<div style="color:#8b949e;font-size:0.72rem;margin-top:6px">Annualized Vol: ${fc.annual_vol_pct}%</div>` : ''}
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:2rem;font-weight:700" class="${cls}">${score}</div>
+      <div>
+        <div style="font-size:0.72rem;color:#8b949e">out of 100</div>
+        <div style="font-size:0.78rem;color:#8b949e">baseline 50 · ${delta>=0?'+':''}${delta} from signals</div>
+      </div>
     </div>
+    ${rows.join('')||'<div style="color:#8b949e;font-size:0.82rem">No signals fired</div>'}`;
+}
 
-    <!-- Analyst + Signals -->
+// ── Expanded dashboard card ────────────────────────────────────
+function buildExpandCard(r) {
+  const fc=r.forecast||{}, an=r.analyst||{};
+  const headlines=(r.headlines||[]).slice(0,5);
+  return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
     <div>
-      <div style="font-size:0.72rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Analyst Consensus</div>
+      <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Price Forecast</div>
+      ${buildFcBars(fc, r.price)}
+      <table class="forecast-table" style="margin-top:8px">
+        <thead><tr><th style="text-align:left">Scenario</th><th>1D</th><th>3D</th><th>1W</th><th>1M</th></tr></thead>
+        <tbody>${buildForecastRows(fc)}</tbody>
+      </table>
+      ${fc.annual_vol_pct?`<div style="color:#8b949e;font-size:0.68rem;margin-top:6px">Ann. Vol: ${fc.annual_vol_pct}%</div>`:''}
+    </div>
+    <div>
+      <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Analyst Consensus</div>
       ${buildAnalystBlock(an)}
       <div style="margin-top:14px">
-        <div style="font-size:0.72rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Signal Summary</div>
+        <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Signal Summary</div>
         ${pill(r.sentiment)} ${pill(r.social_signal)} ${pill(r.insider_signal)} ${pill(r.congress_signal)} ${pill(r.gt_direction)}
       </div>
       <div style="margin-top:10px">
-        <div style="font-size:0.72rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Score Breakdown</div>
-        <div style="font-size:0.78rem">${(r.reasons||[]).map(x=>`<span style="display:inline-block;background:#21262d;padding:2px 7px;border-radius:4px;margin:2px;color:#8b949e">${x}</span>`).join('')}</div>
+        <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Quant Score</div>
+        ${buildQuantChart(r.score, r.reasons)}
       </div>
     </div>
-
-    <!-- Headlines -->
     <div>
-      <div style="font-size:0.72rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Recent Headlines</div>
+      <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Recent Headlines</div>
       ${headlines.length
-        ? headlines.map(h=>`
-            <div style="padding:7px 0;border-bottom:1px solid #21262d;font-size:0.8rem">
-              <div style="color:#8b949e;font-size:0.7rem">${h.date||''} · ${h.source||''}</div>
-              <div>${h.url?`<a href="${h.url}" target="_blank" style="color:#58a6ff;text-decoration:none">${(h.headline||'').substring(0,90)}</a>`:(h.headline||'').substring(0,90)}</div>
-            </div>`).join('')
-        : '<div style="color:#8b949e;font-size:0.82rem">No headlines</div>'}
-      <div style="margin-top:10px">
-        <button class="btn" style="padding:6px 14px;font-size:0.8rem;background:#1f6feb" onclick="loadFullReport('${r.ticker}')">Full Analysis →</button>
+        ? headlines.map(h=>`<div style="padding:7px 0;border-bottom:1px solid #21262d;font-size:0.79rem">
+            <div style="color:#8b949e;font-size:0.68rem">${h.date||''} · ${h.source||''}</div>
+            <div>${h.url?`<a href="${h.url}" target="_blank" style="color:#58a6ff;text-decoration:none">${(h.headline||'').substring(0,90)}</a>`:(h.headline||'').substring(0,90)}</div>
+          </div>`).join('')
+        : '<div style="color:#8b949e;font-size:0.8rem">No headlines</div>'}
+      <div style="margin-top:12px">
+        <button class="btn" style="padding:6px 14px;font-size:0.8rem;background:#1f6feb"
+          onclick="loadFullReport('${r.ticker}')">Full Analysis →</button>
       </div>
     </div>
-
   </div>`;
 }
 
-function loadFullReport(ticker) {
-  document.getElementById('ticker-input').value = ticker;
-  runResearch();
-  window.scrollTo({top: 0, behavior: 'smooth'});
+// ── Dashboard row HTML ─────────────────────────────────────────
+function buildRow(r, idx) {
+  const fc=r.forecast||{}, an=r.analyst||{};
+  const w1=fc['1w'];
+  const fcCell = w1
+    ? `<span class="${w1.base_pct>0?'bull':'bear'}">${w1.base_pct>0?'+':''}${w1.base_pct}%</span>
+       <small style="color:#8b949e;display:block">▼${w1.bear_pct}% / ▲+${w1.bull_pct}%</small>`
+    : 'N/A';
+  const anCell = an.target_mean
+    ? `<span>$${an.target_mean}</span><small style="color:#8b949e;display:block">${colorSignal(an.consensus)}</small>`
+    : 'N/A';
+  const rank = r.rank || (idx+1);
+  return `
+    <tr class="data-row ${rank===1?'top-pick':''}" onclick="toggleExpand('exp-${r.ticker}','arrow-${r.ticker}')">
+      <td><span class="expand-arrow" id="arrow-${r.ticker}">&#9654;</span>${rank===1?'★ ':''} ${rank}</td>
+      <td><span class="ticker-tag">${r.ticker}</span><br><small style="color:#8b949e">${(r.company||'').substring(0,22)}</small></td>
+      <td>${scoreBadge(r.score)}</td>
+      <td>${r.price?'$'+r.price:'N/A'}</td>
+      <td>${colorPct(r.change_1m)}</td>
+      <td>${colorPct(r.change_1y)}</td>
+      <td>${fcCell}</td>
+      <td>${anCell}</td>
+      <td>${colorSignal(r.sentiment)}</td>
+      <td>${r.put_call||'N/A'}</td>
+      <td>${colorPct(r.buy_hold_3y)}</td>
+    </tr>
+    <tr class="expand-row">
+      <td colspan="11"><div class="expand-inner" id="exp-${r.ticker}">${buildExpandCard(r)}</div></td>
+    </tr>`;
 }
 
-document.getElementById('ticker-input').addEventListener('keypress', e => {
-  if (e.key === 'Enter') runResearch();
-});
+function toggleExpand(id, arrowId) {
+  const panel = $(id), arrow = $(arrowId);
+  if (!panel) return;
+  const opening = !panel.classList.contains('open');
+  document.querySelectorAll('.expand-inner').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.expand-arrow').forEach(a=>a.classList.remove('open'));
+  if (opening) { panel.classList.add('open'); arrow && arrow.classList.add('open'); }
+}
+
+// ── Single ticker research ─────────────────────────────────────
+function runResearch() {
+  const ticker = $('ticker-input').value.trim().toUpperCase();
+  if (!ticker) return;
+  $('report-container').style.display = 'none';
+  $('dashboard-container').style.display = 'none';
+  $('search-btn').disabled = true;
+  setStatus(`Analyzing ${ticker}...`);
+
+  const es = new EventSource(`/api/research/${ticker}`);
+  es.onmessage = e => {
+    const d = JSON.parse(e.data);
+    if (d.status==='running') { setStatus(d.message); }
+    else if (d.status==='complete') { es.close(); clearStatus(); $('search-btn').disabled=false; renderReport(d.report); }
+    else if (d.status==='error') { es.close(); clearStatus(); $('search-btn').disabled=false; setStatus('Error: '+d.message); }
+  };
+  es.onerror = ()=>{ es.close(); clearStatus(); $('search-btn').disabled=false; };
+}
+
+function renderReport(r) {
+  const pd=r.price_data||{}, od=r.options_data||{};
+  const ns=r.news_sentiment||{}, ss=r.social_sentiment||{};
+  const it=r.insider_trades||{}, ct=r.congressional_trades||{};
+  const bt=r.backtest||{}, gt=r.google_trends||{};
+  const fc=r.forecast||{}, an=r.analyst||{};
+  // !! must compute score for single report view
+  const score = r._score || 50;
+  const reasons = r._reasons || [];
+
+  $('r-company').textContent = r.company||r.ticker;
+  $('r-sub').textContent = `${r.ticker} · Generated ${new Date(r.generated).toLocaleString()}`;
+  $('r-price').innerHTML  = pd.current_price?`$${pd.current_price}`:'N/A';
+  $('r-1m').innerHTML     = colorPct(pd.change_1m_pct);
+  $('r-3m').innerHTML     = colorPct(pd.change_3m_pct);
+  $('r-1y').innerHTML     = colorPct(pd.change_1y_pct);
+  $('r-low').innerHTML    = `$${pd['52w_low']||'N/A'}`;
+  $('r-high').innerHTML   = `$${pd['52w_high']||'N/A'}`;
+  $('r-vol').innerHTML    = fc.annual_vol_pct?`${fc.annual_vol_pct}%`:(bt.annualized_volatility_pct?`${bt.annualized_volatility_pct}%`:'N/A');
+  $('r-wr').innerHTML     = bt.daily_win_rate_pct?`${bt.daily_win_rate_pct}%`:'N/A';
+
+  $('r-fc-bars').innerHTML      = buildFcBars(fc, pd.current_price);
+  $('r-forecast-body').innerHTML= buildForecastRows(fc);
+  $('r-analyst').innerHTML      = buildAnalystBlock(an);
+  $('r-quant-chart').innerHTML  = buildQuantChart(score, reasons);
+
+  const pc=od.put_call_ratio;
+  $('r-pc').innerHTML         = pc||'N/A';
+  $('r-pc-signal').innerHTML  = colorSignal(pc?(pc<0.8?'Bullish':pc>1.2?'Bearish':'Neutral'):null);
+  $('r-call-iv').innerHTML    = od.avg_call_iv_pct?`${od.avg_call_iv_pct}%`:'N/A';
+  $('r-put-iv').innerHTML     = od.avg_put_iv_pct ?`${od.avg_put_iv_pct}%` :'N/A';
+  $('r-news-signal').innerHTML    = colorSignal(ns.sentiment_label);
+  $('r-social-signal').innerHTML  = colorSignal(ss.signal);
+  $('r-insider-signal').innerHTML = colorSignal(it.insider_signal);
+  $('r-congress-signal').innerHTML= colorSignal(ct.congressional_signal);
+  $('r-bh').innerHTML  = colorPct(bt.buy_hold_return_pct);
+  $('r-ma').innerHTML  = colorPct(bt.ma_crossover_return_pct);
+  $('r-dd').innerHTML  = `<span class="bear">${bt.max_drawdown_pct||'N/A'}%</span>`;
+  $('r-gt-dir').innerHTML = colorSignal(gt.trend_direction==='Rising'?'Bullish':gt.trend_direction==='Falling'?'Bearish':null);
+
+  const hl = ns.headlines||[];
+  $('r-headlines').innerHTML = hl.length
+    ? hl.slice(0,8).map(h=>`<div class="headline"><div class="date">${h.date||''} · ${h.source||''}</div>
+        <div>${h.url?`<a href="${h.url}" target="_blank">${h.headline}</a>`:h.headline}</div></div>`).join('')
+    : '<div style="color:#8b949e">No headlines found</div>';
+
+  $('report-container').style.display = 'block';
+  $('dashboard-container').style.display = 'none';
+}
+
+// ── Dashboard (SSE streaming) ──────────────────────────────────
+let dashES = null;
+
+function runDashboard(watchlist, event) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if (event) event.target.classList.add('active');
+  $('report-container').style.display = 'none';
+
+  // Close any prior stream
+  if (dashES) { dashES.close(); dashES = null; }
+
+  // Show empty table immediately
+  $('dashboard-container').style.display = 'block';
+  $('dash-table').innerHTML = '<tr class="loading-row"><td colspan="11" style="padding:20px;text-align:center;color:#8b949e">Loading sector data...</td></tr>';
+  $('dash-title').textContent = '';
+  $('dash-progress').textContent = '';
+  setStatus('Connecting...');
+
+  const pending = {};   // ticker → row data (arrives out of order)
+  let total = 5;
+
+  dashES = new EventSource(`/api/dashboard/${watchlist}`);
+  dashES.onmessage = e => {
+    const d = JSON.parse(e.data);
+
+    if (d.status === 'start') {
+      $('dash-title').textContent = d.name;
+      total = d.total;
+      setStatus(`Loading ${d.name}... (0/${total})`);
+      $('dash-table').innerHTML = '';
+
+    } else if (d.status === 'ticker') {
+      const r = d.result;
+      pending[r.ticker] = r;
+      setStatus(`Loading ${d.name||'sector'}... (${d.done}/${d.total})`);
+      $('dash-progress').textContent = `${d.done}/${d.total} loaded`;
+      // Insert/update row in table (unsorted as they arrive)
+      const existingRow = document.querySelector(`tr[data-ticker="${r.ticker}"]`);
+      const html = buildRow(r, Object.keys(pending).length - 1);
+      if (existingRow) {
+        existingRow.outerHTML = html;
+      } else {
+        $('dash-table').insertAdjacentHTML('beforeend', html);
+      }
+      // Mark each row with data-ticker for updates
+      const rows = $('dash-table').querySelectorAll('tr.data-row');
+      rows.forEach(row => { const tspan = row.querySelector('.ticker-tag'); if(tspan) row.setAttribute('data-ticker', tspan.textContent); });
+
+    } else if (d.status === 'complete') {
+      dashES.close(); dashES = null;
+      clearStatus();
+      $('dash-progress').textContent = `${d.results.length}/${d.results.length} · sorted by score`;
+      // Re-render in final score order
+      $('dash-table').innerHTML = d.results.map((r,i)=>buildRow(r,i)).join('');
+    }
+  };
+  dashES.onerror = () => {
+    if (dashES) { dashES.close(); dashES = null; }
+    clearStatus();
+    setStatus('Error loading dashboard — check Render logs');
+  };
+}
+
+function loadFullReport(ticker) {
+  $('ticker-input').value = ticker;
+  runResearch();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+$('ticker-input').addEventListener('keypress', e => { if(e.key==='Enter') runResearch(); });
 </script>
 </body>
 </html>
