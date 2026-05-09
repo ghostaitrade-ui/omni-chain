@@ -57,7 +57,7 @@ def _build_report(ticker, company_name):
     }
 
     results = {}
-    with ThreadPoolExecutor(max_workers=9) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {pool.submit(fn): key for key, fn in tasks.items()}
         for future in as_completed(futures):
             key = futures[future]
@@ -182,12 +182,11 @@ def dashboard(watchlist):
             except Exception as e:
                 return {"ticker": ticker, "error": str(e), "score": 0}
 
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            futures = {pool.submit(fetch_one, t): t for t in wl["tickers"]}
-            for fut in as_completed(futures):
-                row = fut.result()
-                collected.append(row)
-                yield f"data: {json.dumps({'status':'ticker','result':row,'done':len(collected),'total':len(wl['tickers'])})}\n\n"
+        # Sequential — one ticker at a time to stay within 512MB free tier RAM
+        for ticker in wl["tickers"]:
+            row = fetch_one(ticker)
+            collected.append(row)
+            yield f"data: {json.dumps({'status':'ticker','result':row,'done':len(collected),'total':len(wl['tickers'])})}\n\n"
 
         collected.sort(key=lambda x: x.get("score", 0), reverse=True)
         for i, r in enumerate(collected):
