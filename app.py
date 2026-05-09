@@ -38,11 +38,15 @@ def research(ticker):
                 get_stocktwits_sentiment, get_insider_trades,
                 get_polygon_details, get_google_trends,
                 get_congressional_trades, get_backtesting_summary,
-                _yf_ticker
+                _polygon_get
             )
             from datetime import datetime
 
-            company_name = _yf_ticker(ticker).info.get("longName", ticker)
+            try:
+                ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
+                company_name = ref.get("results", {}).get("name", ticker)
+            except Exception:
+                company_name = ticker
             yield f"data: {json.dumps({'status': 'running', 'message': f'Fetching price data...'})}\n\n"
             price_data = get_price_data(ticker)
 
@@ -107,7 +111,7 @@ def dashboard(watchlist):
         get_price_data, get_options_data, get_news_sentiment,
         get_stocktwits_sentiment, get_insider_trades, get_polygon_details,
         get_google_trends, get_congressional_trades, get_backtesting_summary,
-        _yf_ticker
+        _polygon_get
     )
     from datetime import datetime
     import time
@@ -118,12 +122,12 @@ def dashboard(watchlist):
 
     results = []
     for i, ticker in enumerate(wl["tickers"]):
-        # Stagger requests — Yahoo Finance rate-limits burst traffic hard
-        if i > 0:
-            time.sleep(3)
         try:
-            company_name = _yf_ticker(ticker).info.get("longName", ticker)
-            time.sleep(1)  # brief pause between yf calls for same ticker
+            try:
+                ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
+                company_name = ref.get("results", {}).get("name", ticker)
+            except Exception:
+                company_name = ticker
             report = {
                 "ticker": ticker, "company": company_name,
                 "generated": datetime.now().isoformat(),

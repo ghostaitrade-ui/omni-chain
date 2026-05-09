@@ -41,62 +41,110 @@ FINNHUB_KEY       = os.getenv("FINNHUB_KEY", "")
 NEWSAPI_KEY       = os.getenv("NEWSAPI_KEY", "")
 POLYGON_KEY       = os.getenv("POLYGON_KEY", "")
 
+# ─── POLYGON HELPERS ─────────────────────────────────────────────────────────
+
+def _polygon_get(path, params=None):
+    """Make a Polygon.io API call with our key."""
+    base = "https://api.polygon.io"
+    p = params or {}
+    p["apiKey"] = POLYGON_KEY
+    r = requests.get(f"{base}{path}", params=p, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+def _polygon_aggs(ticker, days=365):
+    """Fetch daily OHLCV bars from Polygon for the last N days."""
+    end   = datetime.now().strftime("%Y-%m-%d")
+    start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    data  = _polygon_get(
+        f"/v2/aggs/ticker/{ticker}/range/1/day/{start}/{end}",
+        {"adjusted": "true", "sort": "asc", "limit": days + 10}
+    )
+    return data.get("results", [])
+
 # ─── DATA COLLECTORS ────────────────────────────────────────────────────────
 
 def get_price_data(ticker):
+    """Price data via Polygon.io — no rate-limit issues."""
     print(f"  [price] Fetching price data for {ticker}...")
     try:
-        t = _yf_ticker(ticker)
-        hist = t.history(period="1y")
-        info = t.info
-        price_now = hist["Close"].iloc[-1]
-        price_1m  = hist["Close"].iloc[-22] if len(hist) > 22 else None
-        price_3m  = hist["Close"].iloc[-66] if len(hist) > 66 else None
-        price_1y  = hist["Close"].iloc[0]
+        # Daily bars (1 year)
+        bars = _polygon_aggs(ticker, days=380)
+        if not bars:
+            return {"error": "No price data from Polygon"}
+
+        closes  = [b["c"] for b in bars]
+        volumes = [b["v"] for b in bars]
+        price_now = closes[-1]
+        price_1m  = closes[-22]  if len(closes) > 22  else None
+        price_3m  = closes[-66]  if len(closes) > 66  else None
+        price_1y  = closes[0]
+
+        # Snapshot for fundamentals (market cap, short interest etc.)
+        snap = {}
+        try:
+            snap_data = _polygon_get(f"/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}")
+            snap = snap_data.get("ticker", {})
+        except Exception:
+            pass
+
+        # Reference ticker details for sector/industry
+        ref = {}
+        try:
+            ref_data = _polygon_get(f"/v3/reference/tickers/{ticker}")
+            ref = ref_data.get("results", {})
+        except Exception:
+            pass
+
         return {
             "current_price":   round(price_now, 2),
             "change_1m_pct":   round((price_now - price_1m) / price_1m * 100, 2) if price_1m else None,
             "change_3m_pct":   round((price_now - price_3m) / price_3m * 100, 2) if price_3m else None,
             "change_1y_pct":   round((price_now - price_1y) / price_1y * 100, 2),
-            "52w_high":        round(hist["Close"].max(), 2),
-            "52w_low":         round(hist["Close"].min(), 2),
-            "avg_volume_30d":  int(hist["Volume"].tail(30).mean()),
-            "market_cap":      info.get("marketCap"),
-            "pe_ratio":        info.get("trailingPE"),
-            "forward_pe":      info.get("forwardPE"),
-            "dividend_yield":  info.get("dividendYield"),
-            "beta":            info.get("beta"),
-            "sector":          info.get("sector"),
-            "industry":        info.get("industry"),
-            "short_float":     info.get("shortPercentOfFloat"),
+            "52w_high":        round(max(closes), 2),
+            "52w_low":         round(min(closes), 2),
+            "avg_volume_30d":  int(sum(volumes[-30:]) / min(30, len(volumes))),
+            "market_cap":      snap.get("day", {}).get("vw"),   # fallback
+            "pe_ratio":        None,     # Polygon free tier doesn't include PE
+            "forward_pe":      None,
+            "dividend_yield":  None,
+            "beta":            None,
+            "sector":          ref.get("sic_description", ""),
+            "industry":        ref.get("sic_description", ""),
+            "short_float":     None,
         }
     except Exception as e:
         return {"error": str(e)}
 
 
 def get_options_data(ticker):
+    """Options chain via yfinance with retry backoff."""
     print(f"  [options] Fetching options data for {ticker}...")
-    try:
-        t = _yf_ticker(ticker)
-        expirations = t.options
-        if not expirations:
-            return {"error": "No options data available"}
-        nearest = expirations[0]
-        chain = t.option_chain(nearest)
-        calls, puts = chain.calls, chain.puts
-        total_call_oi = calls["openInterest"].sum()
-        total_put_oi  = puts["openInterest"].sum()
-        return {
-            "nearest_expiry":    nearest,
-            "put_call_ratio":    round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else None,
-            "avg_call_iv_pct":   round(calls["impliedVolatility"].mean() * 100, 2),
-            "avg_put_iv_pct":    round(puts["impliedVolatility"].mean() * 100, 2),
-            "total_call_oi":     int(total_call_oi),
-            "total_put_oi":      int(total_put_oi),
-            "expirations_available": len(expirations),
-        }
-    except Exception as e:
-        return {"error": str(e)}
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                time.sleep(5 * attempt)
+            t = _yf_ticker(ticker)
+            expirations = t.options
+            if not expirations:
+                return {"error": "No options data available"}
+            nearest = expirations[0]
+            chain = t.option_chain(nearest)
+            calls, puts = chain.calls, chain.puts
+            total_call_oi = calls["openInterest"].sum()
+            total_put_oi  = puts["openInterest"].sum()
+            return {
+                "nearest_expiry":        nearest,
+                "put_call_ratio":        round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else None,
+                "avg_call_iv_pct":       round(calls["impliedVolatility"].mean() * 100, 2),
+                "avg_put_iv_pct":        round(puts["impliedVolatility"].mean() * 100, 2),
+                "total_call_oi":         int(total_call_oi),
+                "total_put_oi":          int(total_put_oi),
+                "expirations_available": len(expirations),
+            }
+        except Exception as e:
+            last_err = str(e)
+    return {"error": f"Options unavailable after retries: {last_err}"}
 
 
 def get_news_sentiment(ticker):
@@ -129,8 +177,7 @@ def get_news_sentiment(ticker):
     # NewsAPI — broad keyword search across 70k sources
     if NEWSAPI_KEY:
         try:
-            t_info = _yf_ticker(ticker).info
-            company = t_info.get("shortName", ticker)
+            company = ticker  # use ticker directly to avoid extra yf call
             url = (f"https://newsapi.org/v2/everything"
                    f"?q={company}&language=en&sortBy=publishedAt"
                    f"&from={(datetime.now()-timedelta(days=7)).strftime('%Y-%m-%d')}"
@@ -311,27 +358,59 @@ def get_congressional_trades(ticker):
 
 
 def get_backtesting_summary(ticker):
+    """Backtest via Polygon 3-year daily bars — no yfinance needed."""
     print(f"  [backtest] Running backtest for {ticker}...")
     try:
-        hist = _yf_ticker(ticker).history(period="3y")
-        if hist.empty or len(hist) < 252:
+        bars = _polygon_aggs(ticker, days=1100)   # ~3 years of trading days
+        if len(bars) < 252:
             return {"error": "Insufficient history"}
-        closes = hist["Close"]
-        bh_return = round((closes.iloc[-1] - closes.iloc[0]) / closes.iloc[0] * 100, 2)
-        ma50, ma200   = closes.rolling(50).mean(), closes.rolling(200).mean()
-        signals       = (ma50 > ma200).astype(int)
-        daily_returns = closes.pct_change()
-        strat_returns = (signals.shift(1) * daily_returns).dropna()
-        strat_total   = round((1 + strat_returns).prod() * 100 - 100, 2)
-        drawdown      = (closes - closes.cummax()) / closes.cummax()
+
+        closes = [b["c"] for b in bars]
+        n = len(closes)
+
+        # Buy & hold
+        bh_return = round((closes[-1] - closes[0]) / closes[0] * 100, 2)
+
+        # Daily returns
+        daily_rets = [(closes[i] - closes[i-1]) / closes[i-1] for i in range(1, n)]
+
+        # MA crossover (50/200)
+        def ma(lst, w):
+            return [sum(lst[i-w:i]) / w if i >= w else None for i in range(n)]
+
+        ma50  = ma(closes, 50)
+        ma200 = ma(closes, 200)
+        strat_rets = []
+        for i in range(1, n):
+            if ma50[i-1] and ma200[i-1]:
+                signal = 1 if ma50[i-1] > ma200[i-1] else 0
+                strat_rets.append(signal * daily_rets[i-1])
+
+        strat_total = round((1 + sum(strat_rets) / max(len(strat_rets), 1)) ** len(strat_rets) * 100 - 100, 2) if strat_rets else 0
+
+        # Max drawdown
+        peak, max_dd = closes[0], 0
+        for c in closes:
+            if c > peak:
+                peak = c
+            dd = (c - peak) / peak
+            if dd < max_dd:
+                max_dd = dd
+
+        # Volatility
+        mean_r = sum(daily_rets) / len(daily_rets)
+        variance = sum((r - mean_r) ** 2 for r in daily_rets) / len(daily_rets)
+        vol = round((variance ** 0.5) * (252 ** 0.5) * 100, 2)
+        win_rate = round(sum(1 for r in daily_rets if r > 0) / len(daily_rets) * 100, 1)
+
         return {
-            "period":                  "3 years",
-            "buy_hold_return_pct":     bh_return,
-            "ma_crossover_return_pct": strat_total,
-            "max_drawdown_pct":        round(drawdown.min() * 100, 2),
-            "annualized_volatility_pct": round(daily_returns.std() * (252 ** 0.5) * 100, 2),
-            "daily_win_rate_pct":      round((daily_returns > 0).sum() / len(daily_returns) * 100, 1),
-            "data_points":             len(hist),
+            "period":                    "3 years",
+            "buy_hold_return_pct":       bh_return,
+            "ma_crossover_return_pct":   strat_total,
+            "max_drawdown_pct":          round(max_dd * 100, 2),
+            "annualized_volatility_pct": vol,
+            "daily_win_rate_pct":        win_rate,
+            "data_points":               n,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -346,7 +425,12 @@ def generate_report(ticker):
     print(f"  Ticker: {ticker}  |  {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"{'='*60}\n")
 
-    company_name = _yf_ticker(ticker).info.get("longName", ticker)
+    # Get company name from Polygon reference data (no rate limits)
+    try:
+        ref = _polygon_get(f"/v3/reference/tickers/{ticker}")
+        company_name = ref.get("results", {}).get("name", ticker)
+    except Exception:
+        company_name = ticker
 
     report = {
         "ticker":              ticker,
