@@ -4,11 +4,7 @@ python-dotenv
 pytrends
 finnhub-python
 praw
-alpaca-trade-api
-chromadb
-sentence-transformers
-openai
-anthropic
+alpaca-py
 gunicorn
 flask
 flask-cors
