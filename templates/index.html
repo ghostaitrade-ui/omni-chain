@@ -96,6 +96,37 @@ tr.loading-row td { color: #8b949e; font-style: italic; }
 #dashboard-container { display: none; }
 .company-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
 .company-sub  { color: #8b949e; font-size: 0.9rem; margin-bottom: 24px; }
+/* Budget bar */
+.budget-bar { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px 16px; margin-bottom:16px; display:none; align-items:center; gap:12px; flex-wrap:wrap; }
+.budget-bar.show { display:flex; }
+.budget-bar input[type=number] { background:#0d1117; border:1px solid #30363d; color:#e6edf3; padding:8px 12px; border-radius:6px; font-size:1rem; width:140px; -moz-appearance:textfield; }
+.budget-bar input[type=number]::-webkit-outer-spin-button,
+.budget-bar input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; }
+.budget-bar input[type=number]:focus { outline:none; border-color:#58a6ff; }
+/* Wheel top-5 cards */
+.wheel-top5 { display:none; margin-bottom:20px; }
+.wheel-top5.show { display:block; }
+.wheel-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-top:14px; }
+.wheel-card { background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:14px 16px; position:relative; cursor:pointer; transition:border-color 0.2s; }
+.wheel-card:hover { border-color:#58a6ff; }
+.wheel-card.top-card { border-color:#2ea043; }
+.wheel-card .rank-crown { position:absolute; top:10px; right:12px; font-size:1.1rem; }
+.wc-ticker { font-size:1.15rem; font-weight:700; color:#58a6ff; }
+.wc-company { font-size:0.72rem; color:#8b949e; margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wc-capital { background:#21262d; color:#d29922; font-size:0.72rem; padding:3px 8px; border-radius:10px; display:inline-block; margin-bottom:8px; }
+.wc-unaffordable { background:#3a1a1a; color:#f85149; }
+/* Mobile responsive */
+.table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+@media (max-width: 768px) {
+  .hide-mob { display:none !important; }
+  .container { padding:16px 12px; }
+  .expand-inner.open { max-height:1400px; }
+  .expand-grid { grid-template-columns:1fr !important; }
+  header { padding:12px 16px; }
+  header h1 { font-size:1.1rem; }
+  .search-box input { font-size:0.95rem; padding:10px 12px; }
+  .wheel-cards { grid-template-columns:1fr 1fr !important; }
+}
 </style>
 </head>
 <body>
@@ -115,7 +146,23 @@ tr.loading-row td { color: #8b949e; font-style: italic; }
   <div class="watchlist-tabs">
     <div class="tab" onclick="runDashboard('peptide',event)">Peptide / GLP-1</div>
     <div class="tab" onclick="runDashboard('ai',event)">AI / Semiconductors</div>
-    <div class="tab" onclick="runDashboard('wheel',event)">Wheel Strategy</div>
+    <div class="tab" data-wl="wheel" onclick="runDashboard('wheel',event)">Wheel Strategy</div>
+  </div>
+
+  <!-- Budget bar — visible only on Wheel tab -->
+  <div class="budget-bar" id="budget-bar">
+    <span style="color:#8b949e;font-size:0.85rem;font-weight:600">💰 Account Size:</span>
+    <div style="display:flex;align-items:center;gap:4px">
+      <span style="color:#8b949e;font-size:1rem">$</span>
+      <input type="number" id="account-size" value="10000" min="500" step="500" oninput="onBudgetChange()">
+    </div>
+    <span style="color:#8b949e;font-size:0.78rem">· Capital per contract = stock price × 100 shares (cash-secured put)</span>
+  </div>
+
+  <!-- Wheel Top 5 -->
+  <div class="wheel-top5 section" id="wheel-top5">
+    <h2 id="wheel-top5-title">Top 5 Wheel Picks — Your Budget</h2>
+    <div id="wheel-top5-inner" class="wheel-cards"></div>
   </div>
 
   <div class="status-bar" id="status-bar">
@@ -211,16 +258,18 @@ tr.loading-row td { color: #8b949e; font-style: italic; }
         </div>
         <div id="dash-progress" style="color:#8b949e;font-size:0.82rem"></div>
       </div>
+      <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th>Rank</th><th>Ticker</th><th>Score</th><th>Price</th>
-            <th>1M %</th><th>1Y %</th><th>1W Forecast</th>
-            <th>Analyst</th><th>News</th><th>P/C</th><th>3Y Return</th>
+            <th class="hide-mob">1M %</th><th class="hide-mob">1Y %</th><th>1W Forecast</th>
+            <th class="hide-mob">Analyst</th><th>News</th><th class="hide-mob">P/C</th><th class="hide-mob">3Y Return</th>
           </tr>
         </thead>
         <tbody id="dash-table"></tbody>
       </table>
+      </div>
     </div>
   </div>
 </div>
@@ -468,7 +517,7 @@ function buildQuantChart(score, reasons, rowData) {
 function buildExpandCard(r) {
   const fc=r.forecast||{}, an=r.analyst||{};
   const headlines=(r.headlines||[]).slice(0,5);
-  return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+  return `<div class="expand-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
     <div>
       <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Price Forecast</div>
       ${buildFcBars(fc, r.price)}
@@ -518,19 +567,21 @@ function buildRow(r, idx) {
     ? `<span>$${an.target_mean}</span><small style="color:#8b949e;display:block">${colorSignal(an.consensus)}</small>`
     : 'N/A';
   const rank = r.rank || (idx+1);
+  const capitalReq = r.price ? '$'+(r.price*100).toLocaleString('en-US',{maximumFractionDigits:0}) : '—';
+  const isWheel = document.querySelector('.tab.active')?.dataset?.wl === 'wheel';
   return `
     <tr class="data-row ${rank===1?'top-pick':''}" onclick="toggleExpand('exp-${r.ticker}','arrow-${r.ticker}')">
       <td><span class="expand-arrow" id="arrow-${r.ticker}">&#9654;</span>${rank===1?'★ ':''} ${rank}</td>
       <td><span class="ticker-tag">${r.ticker}</span><br><small style="color:#8b949e">${(r.company||'').substring(0,22)}</small></td>
       <td>${scoreBadge(r.score)}</td>
-      <td>${r.price?'$'+r.price:'N/A'}</td>
-      <td>${colorPct(r.change_1m)}</td>
-      <td>${colorPct(r.change_1y)}</td>
+      <td>${r.price?'$'+r.price:'N/A'}${isWheel?`<br><small style="color:#8b949e;font-size:0.65rem">${capitalReq} req</small>`:''}</td>
+      <td class="hide-mob">${colorPct(r.change_1m)}</td>
+      <td class="hide-mob">${colorPct(r.change_1y)}</td>
       <td>${fcCell}</td>
-      <td>${anCell}</td>
+      <td class="hide-mob">${anCell}</td>
       <td>${colorSignal(r.sentiment)}</td>
-      <td>${r.put_call||'N/A'}</td>
-      <td>${colorPct(r.buy_hold_3y)}</td>
+      <td class="hide-mob">${r.put_call||'N/A'}</td>
+      <td class="hide-mob">${colorPct(r.buy_hold_3y)}</td>
     </tr>
     <tr class="expand-row">
       <td colspan="11"><div class="expand-inner" id="exp-${r.ticker}">${buildExpandCard(r)}</div></td>
@@ -615,12 +666,79 @@ function renderReport(r) {
   $('dashboard-container').style.display = 'none';
 }
 
+// ── Wheel budget helpers ───────────────────────────────────────
+let _wheelResults = [];
+
+function getBudget() {
+  return parseFloat($('account-size').value) || 10000;
+}
+
+function saveBudget() {
+  try { localStorage.setItem('oc_budget', $('account-size').value); } catch(e){}
+}
+
+function loadBudget() {
+  try { const v=localStorage.getItem('oc_budget'); if(v) $('account-size').value=v; } catch(e){}
+}
+
+function onBudgetChange() {
+  saveBudget();
+  if (_wheelResults.length) renderWheelTop5(_wheelResults);
+}
+
+function renderWheelTop5(results) {
+  _wheelResults = results;
+  const budget = getBudget();
+  const t5 = $('wheel-top5'), inner = $('wheel-top5-inner'), titleEl = $('wheel-top5-title');
+  if (!results.length) { t5.classList.remove('show'); return; }
+
+  const affordable = results
+    .filter(r => r.price && (r.price * 100) <= budget)
+    .sort((a,b) => b.score - a.score)
+    .slice(0,5);
+
+  titleEl.textContent = `Top ${affordable.length||0} Wheel Picks · $${budget.toLocaleString()} Account`;
+
+  if (!affordable.length) {
+    inner.innerHTML = `<div style="color:#8b949e;padding:16px 0">
+      No tickers fit a <strong>$${budget.toLocaleString()}</strong> account yet.
+      Cheapest available: ${results.filter(r=>r.price).sort((a,b)=>a.price-b.price).slice(0,3).map(r=>`${r.ticker} ($${(r.price*100).toLocaleString()} req)`).join(', ')}.
+    </div>`;
+    t5.classList.add('show'); return;
+  }
+
+  inner.innerHTML = affordable.map((r,i)=>{
+    const fc=r.forecast||{}, w1=fc['1w']||{};
+    const capital = (r.price*100).toLocaleString('en-US',{maximumFractionDigits:0});
+    const prem = w1.base_pct ? `${w1.base_pct>0?'+':''}${w1.base_pct}%` : '—';
+    const premCls = !w1.base_pct?'':'bear';
+    const oColor = r.score>=65?'#3fb950':r.score>=40?'#d29922':'#f85149';
+    return `<div class="wheel-card ${i===0?'top-card':''}" onclick="loadFullReport('${r.ticker}')">
+      ${i===0?'<div class="rank-crown">👑</div>':''}
+      <div class="wc-ticker">${r.ticker}</div>
+      <div class="wc-company">${(r.company||'').substring(0,26)}</div>
+      <div class="wc-capital">$${capital} capital req</div>
+      <div style="margin:8px 0;display:flex;align-items:center;justify-content:space-between">
+        <span class="score-badge ${r.score>=65?'score-high':r.score>=40?'score-mid':'score-low'}">${r.score}/100</span>
+        <span style="font-size:0.8rem;color:${w1.base_pct>0?'#3fb950':w1.base_pct<0?'#f85149':'#8b949e'}">${prem} 1W</span>
+      </div>
+      <div style="font-size:0.72rem;color:#8b949e">${pill(r.sentiment)} ${pill(r.social_signal)}</div>
+      <div style="margin-top:8px;font-size:0.68rem;color:#8b949e">Click for full analysis →</div>
+    </div>`;
+  }).join('');
+  t5.classList.add('show');
+}
+
 // ── Dashboard (SSE streaming) ──────────────────────────────────
 let dashES = null;
 
 function runDashboard(watchlist, event) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  if (event) event.target.classList.add('active');
+  if (event) { event.target.classList.add('active'); }
+  // Show/hide budget bar for wheel
+  const isWheel = watchlist === 'wheel';
+  $('budget-bar').className = isWheel ? 'budget-bar show' : 'budget-bar';
+  if (!isWheel) { $('wheel-top5').classList.remove('show'); _wheelResults = []; }
   $('report-container').style.display = 'none';
 
   // Close any prior stream
@@ -651,6 +769,8 @@ function runDashboard(watchlist, event) {
       pending[r.ticker] = r;
       setStatus(`Loading ${d.name||'sector'}... (${d.done}/${d.total})`);
       $('dash-progress').textContent = `${d.done}/${d.total} loaded`;
+      // Update wheel top-5 as each ticker arrives
+      if (watchlist === 'wheel') renderWheelTop5(Object.values(pending));
       // Insert/update row in table (unsorted as they arrive)
       const existingRow = document.querySelector(`tr[data-ticker="${r.ticker}"]`);
       const html = buildRow(r, Object.keys(pending).length - 1);
@@ -669,6 +789,8 @@ function runDashboard(watchlist, event) {
       $('dash-progress').textContent = `${d.results.length}/${d.results.length} · sorted by score`;
       // Re-render in final score order
       $('dash-table').innerHTML = d.results.map((r,i)=>buildRow(r,i)).join('');
+      // Wheel budget top-5
+      if (watchlist === 'wheel') renderWheelTop5(d.results);
     }
   };
   dashES.onerror = () => {
@@ -685,6 +807,7 @@ function loadFullReport(ticker) {
 }
 
 $('ticker-input').addEventListener('keypress', e => { if(e.key==='Enter') runResearch(); });
+loadBudget();
 </script>
 </body>
 </html>

@@ -37,13 +37,16 @@ WATCHLISTS = {
     },
     "wheel": {
         "name": "Wheel Strategy Candidates",
-        "tickers": ["AAPL", "MSFT", "JPM", "KO", "JNJ"],
+        "tickers": ["F", "SOFI", "PLTR", "BAC", "KO", "AAPL", "JPM", "MSFT"],
         "notes": {
-            "AAPL": "High liquidity, stable premium",
-            "MSFT": "Low beta, consistent IV",
-            "JPM":  "Financials — dividend + premium",
-            "KO":   "Defensive, low volatility wheel",
-            "JNJ":  "Healthcare defensive, stable",
+            "F":    "Ford — ~$11/share, needs ~$1.1K capital, high liquidity",
+            "SOFI": "SoFi — ~$12/share, needs ~$1.2K capital, high IV premium",
+            "PLTR": "Palantir — ~$25/share, needs ~$2.5K capital, elevated IV",
+            "BAC":  "Bank of America — ~$45/share, needs ~$4.5K capital, stable",
+            "KO":   "Coca-Cola — ~$65/share, needs ~$6.5K capital, defensive",
+            "AAPL": "Apple — ~$185/share, needs ~$18.5K capital, textbook wheel",
+            "JPM":  "JPMorgan — ~$220/share, needs ~$22K capital, dividend+premium",
+            "MSFT": "Microsoft — ~$420/share, needs ~$42K capital, low beta",
         }
     },
 }
