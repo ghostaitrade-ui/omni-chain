@@ -7,6 +7,7 @@ SEC insider trades, StockTwits sentiment, and financial data.
 import os
 import json
 import time
+import threading
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
@@ -43,33 +44,67 @@ POLYGON_KEY       = os.getenv("POLYGON_KEY", "")
 
 # ─── POLYGON HELPERS ─────────────────────────────────────────────────────────
 
-def _polygon_get(path, params=None):
-    """Make a Polygon.io API call with our key."""
-    base = "https://api.polygon.io"
-    p = params or {}
-    p["apiKey"] = POLYGON_KEY
-    r = requests.get(f"{base}{path}", params=p, timeout=15)
-    r.raise_for_status()
-    return r.json()
+# Rate limiter: Polygon free tier = 5 calls/min → 1 call every 12s
+_poly_lock   = threading.Lock()
+_poly_last   = [0.0]
+_POLY_GAP    = 12.5   # seconds between calls
 
-def _polygon_aggs(ticker, days=365):
-    """Fetch daily OHLCV bars from Polygon for the last N days."""
+def _polygon_get(path, params=None, _retries=3):
+    """Rate-limited Polygon.io API call with retry on 429."""
+    for attempt in range(_retries):
+        with _poly_lock:
+            gap = time.time() - _poly_last[0]
+            if gap < _POLY_GAP:
+                time.sleep(_POLY_GAP - gap)
+            _poly_last[0] = time.time()
+        try:
+            base = "https://api.polygon.io"
+            p = dict(params or {})
+            p["apiKey"] = POLYGON_KEY
+            r = requests.get(f"{base}{path}", params=p, timeout=20)
+            if r.status_code == 429:
+                time.sleep(30)
+                continue
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            if attempt == _retries - 1:
+                raise
+            time.sleep(5)
+    raise RuntimeError(f"Polygon call failed after {_retries} retries")
+
+# ── Bars cache: fetch 3y once per ticker, reuse for price/backtest/forecast ──
+_bars_cache  = {}
+_BARS_TTL    = 1800   # 30 min
+
+def _get_bars(ticker):
+    """Return 3y of daily bars, hitting Polygon only once per 30 min per ticker."""
+    entry = _bars_cache.get(ticker)
+    if entry and (time.time() - entry["ts"]) < _BARS_TTL:
+        return entry["bars"]
     end   = datetime.now().strftime("%Y-%m-%d")
-    start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    start = (datetime.now() - timedelta(days=1200)).strftime("%Y-%m-%d")
     data  = _polygon_get(
         f"/v2/aggs/ticker/{ticker}/range/1/day/{start}/{end}",
-        {"adjusted": "true", "sort": "asc", "limit": days + 10}
+        {"adjusted": "true", "sort": "asc", "limit": 1210}
     )
-    return data.get("results", [])
+    bars = data.get("results", [])
+    _bars_cache[ticker] = {"ts": time.time(), "bars": bars}
+    return bars
+
+def _polygon_aggs(ticker, days=365):
+    """Slice from cached bars — no extra API call."""
+    bars = _get_bars(ticker)
+    return bars[-days:] if len(bars) > days else bars
 
 # ─── DATA COLLECTORS ────────────────────────────────────────────────────────
 
 def get_price_data(ticker):
-    """Price data via Polygon.io — no rate-limit issues."""
+    """Price data via Polygon.io — uses shared bars cache."""
     print(f"  [price] Fetching price data for {ticker}...")
     try:
-        # Daily bars (1 year)
-        bars = _polygon_aggs(ticker, days=380)
+        all_bars = _get_bars(ticker)
+        bars = all_bars[-380:] if len(all_bars) > 380 else all_bars
         if not bars:
             return {"error": "No price data from Polygon"}
 
@@ -335,11 +370,12 @@ def get_google_trends(ticker, company_name=None):
 
 
 def get_price_forecast(ticker):
-    """Statistical price forecast using log-normal model + historical vol."""
+    """Statistical price forecast — uses shared bars cache, no extra API call."""
     print(f"  [forecast] Building price forecast for {ticker}...")
     try:
         import math
-        bars = _polygon_aggs(ticker, days=90)
+        all_bars = _get_bars(ticker)
+        bars = all_bars[-90:] if len(all_bars) > 90 else all_bars
         if len(bars) < 20:
             return {"error": "Insufficient data"}
         closes = [b["c"] for b in bars]
@@ -436,10 +472,10 @@ def get_congressional_trades(ticker):
 
 
 def get_backtesting_summary(ticker):
-    """Backtest via Polygon 3-year daily bars — no yfinance needed."""
+    """Backtest using shared bars cache — no extra Polygon call."""
     print(f"  [backtest] Running backtest for {ticker}...")
     try:
-        bars = _polygon_aggs(ticker, days=1100)   # ~3 years of trading days
+        bars = _get_bars(ticker)
         if len(bars) < 252:
             return {"error": "Insufficient history"}
 

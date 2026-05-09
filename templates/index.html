@@ -420,7 +420,7 @@ async function runDashboard(watchlist, event) {
 }
 
 function renderDashboard(data) {
-  document.getElementById('dash-title').textContent = data.name + ' Sector';
+  document.getElementById('dash-title').textContent = data.name;
   const tbody = document.getElementById('dash-table');
   let html = '';
 
