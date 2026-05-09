@@ -38,6 +38,7 @@ def _build_report(ticker, company_name):
         get_stocktwits_sentiment, get_insider_trades,
         get_polygon_details, get_google_trends,
         get_congressional_trades, get_backtesting_summary,
+        get_price_forecast, get_analyst_targets,
     )
     from datetime import datetime
 
@@ -51,6 +52,8 @@ def _build_report(ticker, company_name):
         "google_trends":       lambda: get_google_trends(ticker, company_name),
         "congressional_trades":lambda: get_congressional_trades(ticker),
         "backtest":            lambda: get_backtesting_summary(ticker),
+        "forecast":            lambda: get_price_forecast(ticker),
+        "analyst":             lambda: get_analyst_targets(ticker),
     }
 
     results = {}
@@ -150,6 +153,8 @@ def dashboard(watchlist):
             ns      = report.get("news_sentiment", {})
             bt      = report.get("backtest", {})
             od      = report.get("options_data", {})
+            fc      = report.get("forecast", {})
+            an      = report.get("analyst", {})
             return {
                 "ticker": ticker, "company": report.get("company", ticker),
                 "score": score, "reasons": reasons,
@@ -164,7 +169,15 @@ def dashboard(watchlist):
                 "max_drawdown": bt.get("max_drawdown_pct"),
                 "volatility": bt.get("annualized_volatility_pct"),
                 "short_float": pd_data.get("short_float"),
-                "headlines": ns.get("headlines", [])[:3],
+                "headlines": ns.get("headlines", [])[:5],
+                "forecast": fc,
+                "analyst": an,
+                "insider_signal": report.get("insider_trades", {}).get("insider_signal"),
+                "congress_signal": report.get("congressional_trades", {}).get("congressional_signal"),
+                "social_signal": report.get("social_sentiment", {}).get("signal"),
+                "call_iv": od.get("avg_call_iv_pct"),
+                "gt_direction": report.get("google_trends", {}).get("trend_direction"),
+                "full_report": report,
             }
         except Exception as e:
             return {"ticker": ticker, "error": str(e), "score": 0}

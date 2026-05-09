@@ -334,6 +334,84 @@ def get_google_trends(ticker, company_name=None):
         return {"error": str(e)}
 
 
+def get_price_forecast(ticker):
+    """Statistical price forecast using log-normal model + historical vol."""
+    print(f"  [forecast] Building price forecast for {ticker}...")
+    try:
+        import math
+        bars = _polygon_aggs(ticker, days=90)
+        if len(bars) < 20:
+            return {"error": "Insufficient data"}
+        closes = [b["c"] for b in bars]
+        price = closes[-1]
+        daily_rets = [(closes[i] - closes[i-1]) / closes[i-1] for i in range(1, len(closes))]
+        mean_r = sum(daily_rets) / len(daily_rets)
+        variance = sum((r - mean_r) ** 2 for r in daily_rets) / len(daily_rets)
+        daily_vol = variance ** 0.5
+        drift = sum(daily_rets[-20:]) / 20  # 20-day avg daily drift
+
+        def forecast(t):
+            base = price * math.exp(drift * t)
+            bull = price * math.exp(drift * t + 2 * daily_vol * (t ** 0.5))
+            bear = price * math.exp(drift * t - 2 * daily_vol * (t ** 0.5))
+            return {
+                "bear": round(bear, 2), "base": round(base, 2), "bull": round(bull, 2),
+                "bear_pct": round((bear - price) / price * 100, 2),
+                "base_pct": round((base - price) / price * 100, 2),
+                "bull_pct": round((bull - price) / price * 100, 2),
+            }
+
+        return {
+            "current_price":  round(price, 2),
+            "daily_vol_pct":  round(daily_vol * 100, 3),
+            "annual_vol_pct": round(daily_vol * (252 ** 0.5) * 100, 1),
+            "1d": forecast(1), "3d": forecast(3),
+            "1w": forecast(5), "1m": forecast(21),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_analyst_targets(ticker):
+    """Analyst price targets + buy/sell/hold ratings via Finnhub."""
+    print(f"  [analyst] Fetching analyst targets for {ticker}...")
+    try:
+        if not FINNHUB_KEY:
+            return {"error": "Finnhub key required"}
+        pt = requests.get(
+            f"https://finnhub.io/api/v1/stock/price-target?symbol={ticker}&token={FINNHUB_KEY}",
+            timeout=10).json()
+        recs_raw = requests.get(
+            f"https://finnhub.io/api/v1/stock/recommendation?symbol={ticker}&token={FINNHUB_KEY}",
+            timeout=10).json()
+        rec = recs_raw[0] if isinstance(recs_raw, list) and recs_raw else {}
+        total = sum([rec.get("strongBuy", 0), rec.get("buy", 0),
+                     rec.get("hold", 0), rec.get("sell", 0), rec.get("strongSell", 0)])
+        buy_pct  = round((rec.get("strongBuy", 0) + rec.get("buy", 0)) / total * 100) if total else None
+        sell_pct = round((rec.get("strongSell", 0) + rec.get("sell", 0)) / total * 100) if total else None
+        consensus = "Strong Buy" if buy_pct and buy_pct >= 70 else \
+                    "Buy" if buy_pct and buy_pct >= 50 else \
+                    "Sell" if sell_pct and sell_pct >= 50 else "Hold"
+        return {
+            "target_high":   pt.get("targetHigh"),
+            "target_low":    pt.get("targetLow"),
+            "target_mean":   round(pt.get("targetMean", 0), 2) if pt.get("targetMean") else None,
+            "target_median": round(pt.get("targetMedian", 0), 2) if pt.get("targetMedian") else None,
+            "strong_buy":    rec.get("strongBuy", 0),
+            "buy":           rec.get("buy", 0),
+            "hold":          rec.get("hold", 0),
+            "sell":          rec.get("sell", 0),
+            "strong_sell":   rec.get("strongSell", 0),
+            "total_analysts":total,
+            "buy_pct":       buy_pct,
+            "sell_pct":      sell_pct,
+            "consensus":     consensus,
+            "period":        rec.get("period", ""),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_congressional_trades(ticker):
     print(f"  [congress] Fetching congressional trades for {ticker}...")
     try:
